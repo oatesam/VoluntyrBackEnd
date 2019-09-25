@@ -1,0 +1,8 @@
+# Mac Files
+.DS_Store
+
+# Django/Python files
+.idea
+**/__pycache__/
+**/db.sqlite3
+**/migrations
