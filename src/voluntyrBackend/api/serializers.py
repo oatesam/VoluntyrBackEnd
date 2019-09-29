@@ -32,11 +32,11 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         """
         Returns authorized scope for this user
         :param user: EndUser requesting token
-        :return: scope from settings.ACCESS_TYPES
+        :return: scope from settings.SCOPE_TYPES
         """
         scope = "none"
         if Volunteer.objects.filter(end_user=user).exists():
-            scope = settings.ACCESS_TYPES['Volunteer']
+            scope = settings.SCOPE_TYPES['Volunteer']
         elif Organization.objects.filter(end_user=user).exists():
-            scope = settings.ACCESS_TYPES['Organization']
+            scope = settings.SCOPE_TYPES['Organization']
         return scope

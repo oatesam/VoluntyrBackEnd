@@ -15,7 +15,7 @@ class AuthCheck:
         """
         Checks whether the JWT token in request has access to this view.
         :param request: request received by view
-        :param required_scope: scope required for view. From settings.ACCESS_SCOPES
+        :param required_scope: scope required for view. From settings.SCOPE_TYPES
         :return: True if authorized, false otherwise
         """
         scope = cls._get_scope(request)
@@ -56,7 +56,7 @@ class EventsAPIView(generics.ListCreateAPIView):
     serializer_class = EventsSerializer
 
     def list(self, request, *args, **kwargs):
-        if AuthCheck.is_authorized(request, settings.ACCESS_TYPES['Organization']):
+        if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             return super().list(request, *args, **kwargs)
         return AuthCheck.unauthorized_response()
 

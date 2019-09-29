@@ -113,7 +113,7 @@ SIMPLE_JWT = {
 }
 
 
-ACCESS_TYPES = {
+SCOPE_TYPES = {
     'Volunteer': 'volunteer',
     'Organization': 'organization'
 }
