@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 from .managers import EndUserManager
 
+from datetime import datetime
 
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
@@ -20,9 +21,13 @@ class EndUser(AbstractBaseUser, PermissionsMixin):
     def get_username(self):
         return self.email
 
+    def set_last_login(self):
+        self.last_login = datetime.now()
+        self.save()
+
 
 class Organization(models.Model):
-    end_user = models.OneToOneField(EndUser, on_delete=models.CASCADE)
+    end_user = models.OneToOneField(EndUser, unique=True, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     # TODO: Add address fields
 
@@ -31,7 +36,7 @@ class Organization(models.Model):
 
 
 class Volunteer(models.Model):
-    end_user = models.OneToOneField(EndUser, on_delete=models.CASCADE)
+    end_user = models.OneToOneField(EndUser, unique=True, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=200)
     last_name = models.CharField(max_length=200)
     birthday = models.DateField(null=True)
