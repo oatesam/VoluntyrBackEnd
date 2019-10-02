@@ -46,18 +46,27 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
 
 
 class EndUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for an EndUser instance
+    """
     class Meta:
         model = EndUser
         fields = ['email']
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for an Organization instance
+    """
     class Meta:
         model = Organization
         fields = ['name']
 
 
 class VolunteerSerializer(serializers.ModelSerializer):
+    """
+    Serializer for a Volunteer instance
+    """
     class Meta:
         model = Volunteer
         fields = ['first_name', 'last_name', 'birthday']

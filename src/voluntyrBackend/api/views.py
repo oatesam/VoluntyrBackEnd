@@ -67,6 +67,9 @@ class EventsAPIView(generics.ListCreateAPIView):
 
 
 class OrganizationAPIView(generics.CreateAPIView):
+    """
+    Class View for new organization signups.
+    """
     authentication_classes = []
     permission_classes = []
 
@@ -74,6 +77,10 @@ class OrganizationAPIView(generics.CreateAPIView):
     serializer_class = OrganizationSerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Creates a new organization with the email, password, and name provided in the POST request body.
+        :return: Status 201 if the organization is created or status 409 if the email already has an EndUser
+        """
         body = json.loads(str(request.body, encoding='utf-8'))
 
         try:
@@ -83,10 +90,14 @@ class OrganizationAPIView(generics.CreateAPIView):
             serializer = OrganizationSerializer(organization)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
-            return Response(data={"error": "Organization with this email already exists."}, status=status.HTTP_409_CONFLICT)
+            return Response(data={"error": "Organization with this email already exists."},
+                            status=status.HTTP_409_CONFLICT)
 
 
 class VolunteerAPIView(generics.CreateAPIView):
+    """
+    Class View for new volunteer signups.
+    """
     authentication_classes = []
     permission_classes = []
 
@@ -94,6 +105,11 @@ class VolunteerAPIView(generics.CreateAPIView):
     serializer_class = VolunteerSerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Creates a new volunteer with the email, first name, last name, date of birth, and password provided in the
+        POST request body.
+        :return: Status 201 if the volunteer is created or status 409 if the email already has an EndUser
+        """
         body = json.loads(str(request.body, encoding='utf-8'))
 
         try:
