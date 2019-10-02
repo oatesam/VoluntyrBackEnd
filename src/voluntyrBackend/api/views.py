@@ -5,10 +5,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 
 from .models import Event, Organization, Volunteer, EndUser
-from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer
 
 import json
 
@@ -122,3 +123,30 @@ class VolunteerAPIView(generics.CreateAPIView):
         except IntegrityError:
             return Response(data={"error": "Volunteer with this email already exists."}, status=status.HTTP_409_CONFLICT)
 
+
+class CheckEmailAPIView(generics.CreateAPIView):
+    """
+    Class View to check if an email has an associated EndUser Account.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    queryset = EndUser.objects.all()
+    serializer_class = EndUserSerializer
+
+    def create(self, request, *args, **kwargs):
+        """
+        Post endpoint to check if email has an associated EndUser Account. Email should be in the body of the post with
+        an "email" key.
+        :return: Status 204 if no account exists or Status 202 if an account exists.
+        """
+        body = json.loads(str(request.body, encoding='utf-8'))
+
+        try:
+            end_user = EndUser.objects.get(email=body['email'])
+        except ObjectDoesNotExist:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        if end_user is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_202_ACCEPTED)

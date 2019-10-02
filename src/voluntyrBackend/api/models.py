@@ -5,6 +5,7 @@ from .managers import EndUserManager
 
 from datetime import datetime
 
+
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
     is_active = models.BooleanField(default=True)
