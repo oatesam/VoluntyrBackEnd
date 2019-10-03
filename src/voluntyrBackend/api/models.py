@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 from .managers import EndUserManager
 
-from datetime import datetime
+from django.utils import timezone
 
 
 class EndUser(AbstractBaseUser, PermissionsMixin):
@@ -23,7 +23,7 @@ class EndUser(AbstractBaseUser, PermissionsMixin):
         return self.email
 
     def set_last_login(self):
-        self.last_login = datetime.now()
+        self.last_login = timezone.now()
         self.save()
 
 
