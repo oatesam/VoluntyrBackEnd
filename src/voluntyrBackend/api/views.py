@@ -11,6 +11,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from .models import Event, Volunteer, EndUser, Organization
 from .serializers import EndUserSerializer, EventsSerializer, ObtainTokenPairSerializer, VolunteerSerializer, \
     OrganizationSerializer, VolunteerEventsSerializer
+from .models import Event, Organization,Volunteer, EndUser
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationInfoSerializer
+
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer
 
 import json
 
@@ -209,3 +213,13 @@ class CheckEmailAPIView(generics.CreateAPIView):
         if end_user is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(status=status.HTTP_202_ACCEPTED)
+
+class OrganizationInfoAPIView(generics.ListCreateAPIView):
+    """
+    Class View for app to obtain organization information to populate
+    organization dashboard
+    """
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationInfoSerializer
+
+    # TODO: get id, same as get scope?
