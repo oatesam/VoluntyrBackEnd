@@ -8,12 +8,10 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 
-from .models import Event, Volunteer, EndUser, Organization
-from .serializers import EndUserSerializer, EventsSerializer, ObtainTokenPairSerializer, VolunteerSerializer, \
-    OrganizationSerializer, VolunteerEventsSerializer
+
 from .models import Event, Organization,Volunteer, EndUser
 
-from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer,VolunteerEventsSerializer
 
 import json
 

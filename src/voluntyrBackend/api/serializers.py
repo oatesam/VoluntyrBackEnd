@@ -78,7 +78,6 @@ class VolunteerEventsSerializer(serializers.ModelSerializer):
     organization = serializers.StringRelatedField()
 
 
-
 class OrganizationSerializer(serializers.ModelSerializer):
     """
     Serializer for organization information for app - organization dashboard

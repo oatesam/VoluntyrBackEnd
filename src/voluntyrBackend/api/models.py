@@ -67,5 +67,7 @@ class Event(models.Model):
 
     # TODO: Consider potential useful fields
 
+    # TODO: Consider potential useful fields
+
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
