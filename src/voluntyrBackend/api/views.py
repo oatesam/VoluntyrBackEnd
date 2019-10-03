@@ -5,8 +5,8 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from django.conf import settings
 
-from .models import Event
-from .serializers import EventsSerializer, ObtainTokenPairSerializer
+from .models import Event, Organization
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationInfoSerializer
 
 
 class AuthCheck:
@@ -60,3 +60,13 @@ class EventsAPIView(generics.ListCreateAPIView):
             return super().list(request, *args, **kwargs)
         return AuthCheck.unauthorized_response()
 
+
+class OrganizationInfoAPIView(generics.ListCreateAPIView):
+    """
+    Class View for app to obtain organization information to populate
+    organization dashboard
+    """
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationInfoSerializer
+
+    # TODO: get id, same as get scope?

@@ -6,15 +6,19 @@ from .models import Event, Volunteer, Organization
 
 
 class EventsSerializer(serializers.ModelSerializer):
+    """
+    Serializer to obtain events information
+    """
     class Meta:
         model = Event
-        fields = ['start_time', 'end_time', 'title', 'organization']
+        fields = ['title', 'start_time', 'end_time', 'date', 'location', 'description', 'organization']
 
 
 class ObtainTokenPairSerializer(TokenObtainPairSerializer):
     """
     Serializer for JWT Tokens
     """
+
     def get_token(self, user):
         """
         Generates JWT token for user
@@ -40,3 +44,13 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         elif Organization.objects.filter(end_user=user).exists():
             scope = settings.SCOPE_TYPES['Organization']
         return scope
+
+
+class OrganizationInfoSerializer(serializers.ModelSerializer):
+    """
+    Serializer for organization information for app - organization dashboard
+    """
+
+    class Meta:
+        model = Organization
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
