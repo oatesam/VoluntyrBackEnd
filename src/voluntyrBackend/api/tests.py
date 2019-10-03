@@ -4,11 +4,64 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import ObtainTokenPairView, VolunteerAPIView, OrganizationAPIView
+from .views import ObtainTokenPairView, VolunteerAPIView, OrganizationAPIView, CheckEmailAPIView
 
 
 class SignupLoginTest(TestCase):
-    def test_volunteer(self):
+    def test_checkemail(self):
+        """
+        Test emailcheck endpoint
+        """
+        email = "email123@gmail.com"
+        password = "testpassword123"
+
+        self.Test_emailcheck("shouldntexist@gmail.com", 204, "This email shouldn't exist.")
+        self.Test_volunteer_signup(email, password)
+        self.Test_emailcheck(email, 202, "This email should exist.")
+
+    def test_volunteer_duplicate_signup(self):
+        """
+        Test if email can be used to signup for two volunteer accounts
+        """
+        email = "volunteertestemail1@gmail.com"
+        password = "testpassword123"
+
+        self.Test_volunteer_signup(email, password)
+        self.Test_volunteer_signup(email, password, 409, "Email already has an account, shouldn't be able to signup")
+
+    def test_organization_duplicate_signup(self):
+        """
+        Test if email can be used to signup for two organization accounts
+        """
+        email = "orgtestemail1@gmail.com"
+        password = "testpassword123"
+
+        self.Test_organization_signup(email, password)
+        self.Test_organization_signup(email, password, 409, "Email already has an account, shouldn't be able to signup")
+
+    def test_organization_volunteer_duplicate_signup(self):
+        """
+        Test if email can be used to signup for organization account then volunteer account.
+        """
+        email = "duplicateemail@gmail.com"
+        password = "testpassword123"
+
+        self.Test_organization_signup(email, password)
+        self.Test_volunteer_signup(email, password, 409, "Email has an organization account, shouldn't be able to "
+                                                         "signup for volunteer account")
+
+    def test_volunteer_organization_duplicate_signup(self):
+        """
+        Test if email can be used to signup for volunteer account then organization account.
+        """
+        email = "duplicateemail@gmail.com"
+        password = "testpassword123"
+
+        self.Test_volunteer_signup(email, password)
+        self.Test_organization_signup(email, password, 409, "Email has an organization account, shouldn't be able to "
+                                                            "signup for volunteer account")
+
+    def test_volunteer_signup_login(self):
         """
         Test volunteer signup and login endpoints and test volunteer access and refresh tokens
         """
@@ -19,6 +72,7 @@ class SignupLoginTest(TestCase):
         refresh_token, access_token = self.Test_volunteer_login(email, password)
         self.Test_volunteer_access_token(access_token)
         self.Test_refresh_token(refresh_token)
+
 
     def test_organization(self):
         """
@@ -32,11 +86,13 @@ class SignupLoginTest(TestCase):
         self.Test_organization_access_token(access_token)
         self.Test_refresh_token(refresh_token)
 
-    def Test_volunteer_signup(self, email, password):
+    def Test_volunteer_signup(self, email, password, expected=201, msg="Volunteer Signup Failed"):
         """
         Test volunteer signup endpoint
         :param email
         :param password
+        :param expected: Expected status code. Default: 201
+        :param msg: Failure message to use for assertEquals. Default: "Volunteer Signup Failed"
         """
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "first_name": "test",
@@ -46,7 +102,7 @@ class SignupLoginTest(TestCase):
 
         signup_request = factory.post(path="api/signup/volunteer/", data=signup_data, content_type="json")
         signup_response = signup_view(signup_request)
-        self.assertEqual(signup_response.status_code, 201, "Volunteer Signup Failed")
+        self.assertEqual(signup_response.status_code, expected, msg)
 
     def Test_volunteer_login(self, email, password):
         """
@@ -72,11 +128,13 @@ class SignupLoginTest(TestCase):
         # TODO: Test volunteer access token when endpoints are available
         pass
 
-    def Test_organization_signup(self, email, password):
+    def Test_organization_signup(self, email, password, expected=201, msg="Organization Signup Failed"):
         """
-        Test volunteer signup endpoint
+        Test organization signup endpoint
         :param email
         :param password
+        :param expected: Expected status code. Default: 201
+        :param msg: Failure message to use for assertEquals. Default: "Organization Signup Failed"
         """
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "name": "TestOrg"})
@@ -85,7 +143,7 @@ class SignupLoginTest(TestCase):
 
         signup_request = factory.post(path="api/signup/organization/", data=signup_data, content_type="json")
         signup_response = signup_view(signup_request)
-        self.assertEqual(signup_response.status_code, 201, "Organization Signup Failed")
+        self.assertEqual(signup_response.status_code, expected, msg)
 
     def Test_organization_login(self, email, password):
         """
@@ -128,3 +186,19 @@ class SignupLoginTest(TestCase):
 
         access_token = refresh_token_response.data['access']
         return access_token
+
+    def Test_emailcheck(self, email, expected, msg=None):
+        """
+        Tests api/checkemail/
+        :param email: Email to test with
+        :param expected: Expected status code for Email
+        :param msg: Failure message to use for assertEquals
+        """
+        factory = APIRequestFactory()
+        email_data = json.dumps({"email": email})
+        email_view = CheckEmailAPIView.as_view()
+
+        email_request = factory.post(path="api/checkemail/", data=email_data, content_type="json")
+        email_response = email_view(email_request)
+
+        self.assertEqual(email_response.status_code, expected, msg)
