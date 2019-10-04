@@ -40,3 +40,8 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         elif Organization.objects.filter(end_user=user).exists():
             scope = settings.SCOPE_TYPES['Organization']
         return scope
+
+class VolunteerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Volunteer
+        fields = ['first_name', 'last_name', 'birthday']

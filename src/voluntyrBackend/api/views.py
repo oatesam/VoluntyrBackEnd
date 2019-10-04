@@ -1,12 +1,12 @@
-from rest_framework import generics, response, status
+from rest_framework import generics, response, status, request
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from django.conf import settings
 
-from .models import Event
-from .serializers import EventsSerializer, ObtainTokenPairSerializer
+from .models import Event, Volunteer
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, VolunteerSerializer
 
 
 class AuthCheck:
@@ -59,4 +59,13 @@ class EventsAPIView(generics.ListCreateAPIView):
         if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             return super().list(request, *args, **kwargs)
         return AuthCheck.unauthorized_response()
+
+class VolunteerAPIView(generics.ListCreateAPIView):
+    queryset = Volunteer.objects.all()
+    serializer_class = VolunteerSerializer
+
+
+
+
+
 

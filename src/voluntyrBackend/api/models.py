@@ -31,6 +31,7 @@ class Organization(models.Model):
 
 
 class Volunteer(models.Model):
+
     end_user = models.OneToOneField(EndUser, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=200)
     last_name = models.CharField(max_length=200)
@@ -44,10 +45,12 @@ class Volunteer(models.Model):
 
 
 class Event(models.Model):
+
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     title = models.CharField(max_length=100)
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
+    volunteers = models.ManyToManyField(Volunteer)
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
