@@ -8,6 +8,6 @@ urlpatterns = [
     path('events/', EventsAPIView.as_view()),
     path('token/', ObtainTokenPairView.as_view()),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('organization_info', OrganizationInfoAPIView.as_view())
+    path('organization_info/', OrganizationInfoAPIView.as_view())
 ]
 
