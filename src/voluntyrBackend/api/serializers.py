@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.conf import settings
 
-from .models import Event, Volunteer, Organization
+from .models import Event, Volunteer, Organization, EndUser
 
 
 class EventsSerializer(serializers.ModelSerializer):
@@ -21,6 +21,9 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         :param user: EndUser requesting token
         :return: Token
         """
+        end_user = EndUser.objects.get(email=user)
+        end_user.set_last_login()
+
         token = super().get_token(user)
 
         scope = self.get_scope(user)
@@ -40,3 +43,30 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         elif Organization.objects.filter(end_user=user).exists():
             scope = settings.SCOPE_TYPES['Organization']
         return scope
+
+
+class EndUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for an EndUser instance
+    """
+    class Meta:
+        model = EndUser
+        fields = ['email']
+
+
+class OrganizationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for an Organization instance
+    """
+    class Meta:
+        model = Organization
+        fields = ['name']
+
+
+class VolunteerSerializer(serializers.ModelSerializer):
+    """
+    Serializer for a Volunteer instance
+    """
+    class Meta:
+        model = Volunteer
+        fields = ['first_name', 'last_name', 'birthday']
