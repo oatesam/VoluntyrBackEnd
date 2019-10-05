@@ -90,9 +90,13 @@ class EventsAPIView(generics.ListCreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-class VolunteerAPIView(generics.ListCreateAPIView):
-    queryset = Volunteer.objects.all()
+class VolunteerAccAPIView(generics.RetrieveAPIView):
+    queryset = Volunteer.objects.get(AuthCheck.get_user_id(request))
     serializer_class = VolunteerSerializer
+
+class VolunteerEventsAPIView(generics.ListAPIView):
+    queryset = Event.objects.filter(AuthCheck.get_user_id(request))
+    serializer_class = EventsSerializer
 
 
 
