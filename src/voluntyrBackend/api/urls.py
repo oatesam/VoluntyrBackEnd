@@ -2,7 +2,9 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
+
 from .views import EventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, CheckEmailAPIView, OrganizationInfoAPIView
+
 
 urlpatterns = [
     path('events/', EventsAPIView.as_view()),
@@ -12,5 +14,6 @@ urlpatterns = [
     path('signup/volunteer/', VolunteerAPIView.as_view()),
     path('signup/checkemail/', CheckEmailAPIView.as_view()),
     path('organization_info', OrganizationInfoAPIView.as_view())
+
 ]
 
