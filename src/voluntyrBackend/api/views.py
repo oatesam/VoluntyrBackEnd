@@ -168,7 +168,7 @@ class OrganizationInfoAPIView(generics.ListCreateAPIView):
     Class View for app to obtain organization information to populate
     organization dashboard
     """
-    queryset = Organization.objects.all()
+    queryset = Organization.objects.filter(end_user_id=2)
     serializer_class = OrganizationInfoSerializer
 
     # TODO: get id, same as get scope?
