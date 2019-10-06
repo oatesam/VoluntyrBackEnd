@@ -91,12 +91,16 @@ class EventsAPIView(generics.ListCreateAPIView):
 
 
 class VolunteerAccAPIView(generics.RetrieveAPIView):
-    queryset = Volunteer.objects.get(AuthCheck.get_user_id(request))
-    serializer_class = VolunteerSerializer
+    def get_object(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        return Volunteer.objects.get(id=user_id)
 
 class VolunteerEventsAPIView(generics.ListAPIView):
-    queryset = Event.objects.filter(AuthCheck.get_user_id(request))
-    serializer_class = EventsSerializer
+    def get_queryset(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        return Event.objects.filter(volunteers__id=user_id)
 
 
 
