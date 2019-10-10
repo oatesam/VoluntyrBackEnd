@@ -4,8 +4,9 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import ObtainTokenPairView, VolunteerAPIView, OrganizationAPIView, CheckEmailAPIView
+from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
 
+# TODO: Test volunteer dashboard api endpoints. VolunteerAPIView, VolunteerEventsApiView
 
 class SignupLoginTest(TestCase):
     def test_checkemail(self):
@@ -98,7 +99,7 @@ class SignupLoginTest(TestCase):
         signup_data = json.dumps({"email": email, "password": password, "first_name": "test",
                                  "last_name": "volunteer", "birthday": "1998-06-12"})
 
-        signup_view = VolunteerAPIView.as_view()
+        signup_view = VolunteerSignupAPIView.as_view()
 
         signup_request = factory.post(path="api/signup/volunteer/", data=signup_data, content_type="json")
         signup_response = signup_view(signup_request)
@@ -139,7 +140,7 @@ class SignupLoginTest(TestCase):
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "name": "TestOrg"})
 
-        signup_view = OrganizationAPIView.as_view()
+        signup_view = OrganizationSignupAPIView.as_view()
 
         signup_request = factory.post(path="api/signup/organization/", data=signup_data, content_type="json")
         signup_response = signup_view(signup_request)

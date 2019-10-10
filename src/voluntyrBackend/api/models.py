@@ -54,6 +54,7 @@ class Event(models.Model):
     end_time = models.DateTimeField()
     title = models.CharField(max_length=100)
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
+    volunteers = models.ManyToManyField(Volunteer)
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
