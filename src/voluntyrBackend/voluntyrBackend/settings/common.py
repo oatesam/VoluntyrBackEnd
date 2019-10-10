@@ -17,10 +17,8 @@ from .shared import *
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-SECRET_KEY = 'v=3z4059_@x6iezx&x$*hi!t%n!(r#!j!=32lg9j!m-=bz3h*$'
+SECRET_KEY = None
 
 # Application definition
 
