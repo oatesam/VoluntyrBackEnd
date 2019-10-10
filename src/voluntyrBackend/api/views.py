@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, mixins
 from rest_framework.response import Response
 
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -11,7 +11,7 @@ from django.db import IntegrityError
 
 from .models import Event, Organization,Volunteer, EndUser
 
-from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer,OrganizationInfoSerializer
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer
 
 import json
 
@@ -68,13 +68,12 @@ class EventsAPIView(generics.ListCreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-class OrganizationAPIView(generics.CreateAPIView):
+class OrganizationCreateAPIView(generics.CreateAPIView, mixins.RetrieveModelMixin):
     """
     Class View for new organization signups.
     """
     authentication_classes = []
     permission_classes = []
-
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
 
@@ -84,17 +83,21 @@ class OrganizationAPIView(generics.CreateAPIView):
         :return: Status 201 if the organization is created or status 409 if the email already has an EndUser
         """
         body = json.loads(str(request.body, encoding='utf-8'))
-
         try:
             end_user = EndUser.objects.create_user(body['email'], body['password'])
             organization = Organization.objects.create(name=body['name'], end_user_id=end_user.id)
-
             serializer = OrganizationSerializer(organization)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
             return Response(data={"error": "Organization with this email already exists."},
                             status=status.HTTP_409_CONFLICT)
 
+
+class OrganizationAPIView(generics.RetrieveAPIView):
+    serializer_class = OrganizationSerializer
+    def get_object(self):
+        organization_id=1
+        return Organization.objects.get(id=organization_id)
 
 class VolunteerAPIView(generics.CreateAPIView):
     """
@@ -152,12 +155,3 @@ class CheckEmailAPIView(generics.CreateAPIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(status=status.HTTP_202_ACCEPTED)
 
-class OrganizationInfoAPIView(generics.ListCreateAPIView):
-    """
-    Class View for app to obtain organization information to populate
-    organization dashboard
-    """
-    queryset = Organization.objects.filter(end_user_id=2)
-    serializer_class = OrganizationInfoSerializer
-
-    # TODO: get id, same as get scope?
