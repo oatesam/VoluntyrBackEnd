@@ -58,15 +58,6 @@ class EndUserSerializer(serializers.ModelSerializer):
         fields = ['email']
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
-    """
-    Serializer for an Organization instance
-    """
-    class Meta:
-        model = Organization
-        fields = ['name']
-
-
 class VolunteerSerializer(serializers.ModelSerializer):
     """
     Serializer for a Volunteer instance
@@ -76,7 +67,8 @@ class VolunteerSerializer(serializers.ModelSerializer):
         fields = ['first_name', 'last_name', 'birthday']
 
 
-class OrganizationInfoSerializer(serializers.ModelSerializer):
+
+class OrganizationSerializer(serializers.ModelSerializer):
     """
     Serializer for organization information for app - organization dashboard
     """
