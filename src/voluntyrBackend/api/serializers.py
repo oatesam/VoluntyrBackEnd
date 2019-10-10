@@ -49,6 +49,7 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         return scope
 
 
+
 class EndUserSerializer(serializers.ModelSerializer):
     """
     Serializer for an EndUser instance
@@ -71,6 +72,7 @@ class VolunteerEventsSerializer(serializers.ModelSerializer):
     """
     Serializer for events presented to volunteers. Shows details meant only for volunteers.
     """
+
     class Meta:
         model = Event
         fields = ['start_time', 'end_time', 'title', 'organization']
