@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 
+
 from .models import Event, Organization,Volunteer, EndUser
 
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer
@@ -58,8 +59,6 @@ class ObtainTokenPairView(TokenObtainPairView):
 
 
 class EventsAPIView(generics.ListCreateAPIView):
-
-    queryset = Event.objects.all()
     queryset = Event.objects.filter(organization_id=2)
     serializer_class = EventsSerializer
 

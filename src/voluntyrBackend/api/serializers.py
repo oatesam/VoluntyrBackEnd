@@ -49,6 +49,7 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         return scope
 
 
+
 class EndUserSerializer(serializers.ModelSerializer):
     """
     Serializer for an EndUser instance
