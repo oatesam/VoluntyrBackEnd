@@ -129,8 +129,9 @@ class OrganizationAPIView(generics.RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
     def get_object(self):
-        organization_id=1
-        return Organization.objects.get(id=organization_id)
+        organization_id=2
+
+        return Organization.objects.get(end_user_id=organization_id)
 
 
 class VolunteerSignupAPIView(generics.CreateAPIView):
