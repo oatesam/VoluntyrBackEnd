@@ -15,7 +15,7 @@ from .shared import *
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
-DEBUG = False
+DEBUG = os.environ.get('VOL_DEBUG')
 # SECRET_KEY = 'v=3z4059_@x6iezx&x$*hi!t%n!(r#!j!=32lg9j!m-=bz3h*$'
 
 # Application definition

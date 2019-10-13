@@ -6,6 +6,7 @@ Django==2.2.1
 django-cors-headers==3.0.0
 djangorestframework==3.10.2
 djangorestframework-simplejwt==4.3.0
+gunicorn==19.9.0
 idna==2.8
 Jinja2==2.10.1
 livereload==2.6.1
