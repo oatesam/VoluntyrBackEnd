@@ -1,17 +1,14 @@
 from .shared import *
+import dj_database_url
+import hero
 
-# TODO: Set env var for secret_key
 SECRET_KEY = os.environ.get('VOL_SECRET_KEY')
 
-# TODO: Add allowed hosts
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['voluntyr-backend-stg.heroku.com']
 
 # TODO: Setup PostgreSQL db on heroku and set settings here
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
 }
 
 SIMPLE_JWT = {
