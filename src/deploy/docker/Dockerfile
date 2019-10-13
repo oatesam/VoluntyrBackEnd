@@ -17,4 +17,12 @@ RUN pip3 install -r /app/requriements.txt
 
 ENV VOL_SECRET_KEY="8c3b1f260864e6f18a410925a33b7f4ac2752b456e5f238245a69682f8d37314fb6f02fb1f84ba92b093be3376db2c1a4703710b7ae097c0a3c32d94de37debf4b50399024f40c882edb0b740282239510860edd118944d1bea5d5574aa92a58474dd68e9c10b5847a467e298acf70850a150181133f3e55481dde94e9a54cf5"
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+ENV VOL_DEBUG=False
+
+#CMD ["python", "manage.py", "runserver", "0.0.0.0:"]
+
+RUN useradd -ms /bin/bash myuser
+USER myuser
+
+# run gunicorn
+CMD gunicorn voluntyrBackend.wsgi:application --bind 0.0.0.0:$PORT

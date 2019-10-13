@@ -1,12 +1,10 @@
 from .shared import *
 import dj_database_url
-import hero
 
 SECRET_KEY = os.environ.get('VOL_SECRET_KEY')
 
-ALLOWED_HOSTS = ['voluntyr-backend-stg.heroku.com']
+ALLOWED_HOSTS = ['voluntyr-backend-stg.herokuapp.com']
 
-# TODO: Setup PostgreSQL db on heroku and set settings here
 DATABASES = {
     'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
 }
