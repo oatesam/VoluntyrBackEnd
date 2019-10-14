@@ -19,10 +19,16 @@ ENV VOL_SECRET_KEY="8c3b1f260864e6f18a410925a33b7f4ac2752b456e5f238245a69682f8d3
 
 ENV VOL_DEBUG=False
 
-#CMD ["python", "manage.py", "runserver", "0.0.0.0:"]
-
 RUN useradd -ms /bin/bash myuser
 USER myuser
 
-# run gunicorn
-CMD gunicorn voluntyrBackend.wsgi:application --bind 0.0.0.0:$PORT
+WORKDIR /app/src/deploy
+
+
+# If running container locally
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+# run gunicorn - for heroku
+# CMD gunicorn voluntyrBackend.wsgi:application --bind 0.0.0.0:$PORT
+
+CMD ["/bin/bash", "/app/src/deploy/start.sh"]
