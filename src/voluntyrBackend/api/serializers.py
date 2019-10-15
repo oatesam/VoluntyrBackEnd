@@ -5,10 +5,20 @@ from django.conf import settings
 from .models import Event, Volunteer, Organization, EndUser
 
 
+class EventsSerializer(serializers.ModelSerializer):
+    """
+    Serializer to obtain events information
+    """
+    class Meta:
+        model = Event
+        fields = ['title', 'start_time', 'end_time', 'date', 'location', 'description', 'organization']
+
+
 class ObtainTokenPairSerializer(TokenObtainPairSerializer):
     """
     Serializer for JWT Tokens
     """
+
     def get_token(self, user):
         """
         Generates JWT token for user
@@ -39,6 +49,7 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         return scope
 
 
+
 class EndUserSerializer(serializers.ModelSerializer):
     """
     Serializer for an EndUser instance
@@ -46,15 +57,6 @@ class EndUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = EndUser
         fields = ['email']
-
-
-class OrganizationSerializer(serializers.ModelSerializer):
-    """
-    Serializer for an Organization instance
-    """
-    class Meta:
-        model = Organization
-        fields = ['name']
 
 
 class VolunteerSerializer(serializers.ModelSerializer):
@@ -70,6 +72,7 @@ class VolunteerEventsSerializer(serializers.ModelSerializer):
     """
     Serializer for events presented to volunteers. Shows details meant only for volunteers.
     """
+
     class Meta:
         model = Event
         fields = ['start_time', 'end_time', 'title', 'organization']
@@ -77,12 +80,11 @@ class VolunteerEventsSerializer(serializers.ModelSerializer):
     organization = serializers.StringRelatedField()
 
 
-class EventsSerializer(serializers.ModelSerializer):
+class OrganizationSerializer(serializers.ModelSerializer):
     """
-    Serializer for events presented to organizations. Shows details meant to be seen by organizer of the event.
+    Serializer for organization information for app - organization dashboard
     """
-    class Meta:
-        model = Event
-        fields = ['start_time', 'end_time', 'title', 'organization', 'volunteers']
 
-    volunteers = serializers.StringRelatedField(many=True, read_only=True)
+    class Meta:
+        model = Organization
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']

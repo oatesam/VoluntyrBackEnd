@@ -1,4 +1,4 @@
-from rest_framework import generics, status, request
+from rest_framework import generics, status, request, mixins
 from rest_framework.response import Response
 
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -8,9 +8,11 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 
-from .models import Event, Volunteer, EndUser, Organization
-from .serializers import EndUserSerializer, EventsSerializer, ObtainTokenPairSerializer, VolunteerSerializer, \
-    OrganizationSerializer, VolunteerEventsSerializer
+
+from .models import Event, Organization,Volunteer, EndUser
+
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer,VolunteerEventsSerializer
+
 
 import json
 
@@ -88,8 +90,14 @@ class ObtainTokenPairView(TokenObtainPairView):
 
 
 class EventsAPIView(generics.ListCreateAPIView):
-    queryset = Event.objects.all()
     serializer_class = EventsSerializer
+
+    def get_queryset(self):
+        req=self.request
+        user_id = AuthCheck.get_user_id(req)
+        organization = Organization.objects.get(end_user_id=user_id)
+        org_id=organization.id
+        return Event.objects.filter(organization_id=org_id)
 
     def list(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
@@ -97,21 +105,40 @@ class EventsAPIView(generics.ListCreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-class VolunteerAPIView(generics.RetrieveAPIView):
+class OrganizationCreateAPIView(generics.CreateAPIView, mixins.RetrieveModelMixin):
     """
-    Class View for volunteer to see their account details.
+    Class View for new organization signups.
     """
-    serializer_class = VolunteerSerializer
+    authentication_classes = []
+    permission_classes = []
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationSerializer
+
+    def create(self, request, *args, **kwargs):
+        """
+        Creates a new organization with the email, password, and name provided in the POST request body.
+        :return: Status 201 if the organization is created or status 409 if the email already has an EndUser
+        """
+        body = json.loads(str(request.body, encoding='utf-8'))
+        try:
+            end_user = EndUser.objects.create_user(body['email'], body['password'])
+            organization = Organization.objects.create(name=body['name'], end_user_id=end_user.id)
+            serializer = OrganizationSerializer(organization)
+            return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response(data={"error": "Organization with this email already exists."},
+                            status=status.HTTP_409_CONFLICT)
+
+
+class OrganizationAPIView(generics.RetrieveAPIView):
+    serializer_class = OrganizationSerializer
+
 
     def get_object(self):
-        req = self.request
-        user_id = AuthCheck.get_user_id(req)
-        return Volunteer.objects.get(id=user_id)
+        req= self.request
+        org_id= AuthCheck.get_user_id(req)
 
-    def retrieve(self, req, *args, **kwargs):
-        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
-            return super().retrieve(req, *args, **kwargs)
-        return AuthCheck.unauthorized_response()
+        return Organization.objects.get(end_user_id=org_id)
 
 
 class VolunteerSignupAPIView(generics.CreateAPIView):
@@ -209,3 +236,21 @@ class CheckEmailAPIView(generics.CreateAPIView):
         if end_user is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class VolunteerAPIView(generics.RetrieveAPIView):
+    """
+    Class View for volunteer to see their account details.
+    """
+    serializer_class = VolunteerSerializer
+
+    def get_object(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        return Volunteer.objects.get(end_user_id=user_id)
+
+    def retrieve(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().retrieve(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()
+
