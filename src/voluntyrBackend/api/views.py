@@ -90,8 +90,14 @@ class ObtainTokenPairView(TokenObtainPairView):
 
 
 class EventsAPIView(generics.ListCreateAPIView):
-    queryset = Event.objects.filter(organization_id=2)
     serializer_class = EventsSerializer
+
+    def get_queryset(self):
+        req=self.request
+        user_id = AuthCheck.get_user_id(req)
+        organization = Organization.objects.get(end_user_id=user_id)
+        org_id=organization.id
+        return Event.objects.filter(organization_id=org_id)
 
     def list(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
@@ -127,10 +133,12 @@ class OrganizationCreateAPIView(generics.CreateAPIView, mixins.RetrieveModelMixi
 class OrganizationAPIView(generics.RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
-    def get_object(self):
-        organization_id=2
 
-        return Organization.objects.get(end_user_id=organization_id)
+    def get_object(self):
+        req= self.request
+        org_id= AuthCheck.get_user_id(req)
+
+        return Organization.objects.get(end_user_id=org_id)
 
 
 class VolunteerSignupAPIView(generics.CreateAPIView):
@@ -239,7 +247,7 @@ class VolunteerAPIView(generics.RetrieveAPIView):
     def get_object(self):
         req = self.request
         user_id = AuthCheck.get_user_id(req)
-        return Volunteer.objects.get(id=user_id)
+        return Volunteer.objects.get(end_user_id=user_id)
 
     def retrieve(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
