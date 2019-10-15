@@ -3,7 +3,10 @@ import dj_database_url
 
 SECRET_KEY = os.environ.get('VOL_SECRET_KEY')
 
-ALLOWED_HOSTS = ['voluntyr-backend-stg.herokuapp.com']
+ALLOWED_HOSTS = [
+    'voluntyr-backend-stg.herokuapp.com',
+    'voluntyr-backend-prod.herokuapp.com'
+]
 
 DATABASES = {
     'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
