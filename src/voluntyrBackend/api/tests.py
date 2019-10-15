@@ -4,9 +4,95 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
+from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, VolunteerAPIView
 
 # TODO: Test volunteer dashboard api endpoints. VolunteerAPIView, VolunteerEventsApiView
+
+class VolunteerDashboardTest(TestCase):
+    """
+    Non existing email
+    """
+    newUserDict = {"email": "testemail2@gmail.com",
+                   "password": "testpassword2",
+                   "first_name": "newuser",
+                   "last_name": "volunteer",
+                   "birthday": "1998-06-12"}
+
+    def test_volunteer_account_info(self):
+        """
+        This method validates the login credentials of the volunteer
+        """
+        self.Test_volunteer_signup(self.newUserDict)
+        refresh_token, access_token = self.Test_volunteer_login(self.newUserDict)
+        self.Test_volunteer_access_token(access_token)
+        self.Test_refresh_token(refresh_token)
+        self.Test_volunteer_account(self.newUserDict, access_token)
+
+    def Test_volunteer_signup(self, newUserDict, expected=201, msg="Volunteer Signup Failed"):
+        """
+        Test volunteer signup endpoint
+        :param email
+        :param password
+        :param expected: Expected status code. Default: 201
+        :param msg: Failure message to use for assertEquals. Default: "Volunteer Signup Failed"
+        """
+        factory = APIRequestFactory()
+        signup_data = json.dumps(newUserDict)
+
+        signup_view = VolunteerSignupAPIView.as_view()
+
+        signup_request = factory.post(path="api/signup/volunteer/", data=signup_data, content_type="json")
+        signup_response = signup_view(signup_request)
+        self.assertEqual(signup_response.status_code, expected, msg)
+
+    def Test_volunteer_login(self, userdict):
+
+        factory = APIRequestFactory()
+        obtain_token_data = 'email=' + str(userdict["email"]) + '&password=' + str(userdict["password"])
+        obtain_token_view = ObtainTokenPairView.as_view()
+
+        obtain_token_request = factory.post(path='api/token/', data=obtain_token_data,
+                                            content_type='application/x-www-form-urlencoded')
+        obtain_token_response = obtain_token_view(obtain_token_request)
+        self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this volunteer.")
+
+        refresh_token = obtain_token_response.data['refresh']
+        access_token = obtain_token_response.data['access']
+
+        return refresh_token, access_token
+
+    def Test_volunteer_access_token(self, token):
+        # TODO: Test volunteer access token when endpoints are available
+        pass
+
+    def Test_refresh_token(self, token):
+        """
+        Test refresh token
+        :param token: Refresh Token
+        :return: New access token
+        """
+        factory = APIRequestFactory()
+        refresh_token_data = 'refresh=' + token
+        refresh_token_view = TokenRefreshView.as_view()
+
+        refresh_token_request = factory.post(path="api/refresh/", data=refresh_token_data,
+                                             content_type='application/x-www-form-urlencoded')
+        refresh_token_response = refresh_token_view(refresh_token_request)
+        self.assertEqual(refresh_token_response.status_code, 200, "Failed to refresh token.")
+
+        access_token = refresh_token_response.data['access']
+        return access_token
+
+    def Test_volunteer_account(self, userDict,  access_token):
+        print("")
+        factory = APIRequestFactory()
+        path = "/api/volunteer/"
+        head = {'Authorization': 'Bearer ' + access_token}
+        volunteer_data_request = factory.get(path, head)
+        print("Request:",volunteer_data_request)
+        volunteer_dashboard_view = VolunteerAPIView.as_view()
+        volunteer_data_response = volunteer_dashboard_view(volunteer_data_request)
+        print("Response:", volunteer_data_response)
 
 class SignupLoginTest(TestCase):
     def test_checkemail(self):
