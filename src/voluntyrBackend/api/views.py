@@ -133,6 +133,7 @@ class OrganizationCreateAPIView(generics.CreateAPIView, mixins.RetrieveModelMixi
 class OrganizationAPIView(generics.RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
+    # TODO: Scope protect
 
     def get_object(self):
         req= self.request
@@ -175,6 +176,8 @@ class VolunteerEventsAPIView(generics.ListAPIView):
     Class View for events which a volunteer has signed up for.
     """
     serializer_class = VolunteerEventsSerializer
+
+    # TODO: Scope protect
 
     def get_queryset(self):
         req = self.request
@@ -243,6 +246,8 @@ class VolunteerAPIView(generics.RetrieveAPIView):
     Class View for volunteer to see their account details.
     """
     serializer_class = VolunteerSerializer
+
+    # TODO: Scope protect
 
     def get_object(self):
         req = self.request
