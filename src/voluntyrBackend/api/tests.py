@@ -1,12 +1,13 @@
 import json
 
 from django.test import TestCase
-from rest_framework.test import APIRequestFactory
+from rest_framework.test import APIRequestFactory, APIClient, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
-
+from requests import Response
 from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, VolunteerAPIView
 
 # TODO: Test volunteer dashboard api endpoints. VolunteerAPIView, VolunteerEventsApiView
+
 
 class VolunteerDashboardTest(TestCase):
     """
@@ -24,8 +25,6 @@ class VolunteerDashboardTest(TestCase):
         """
         self.Test_volunteer_signup(self.newUserDict)
         refresh_token, access_token = self.Test_volunteer_login(self.newUserDict)
-        self.Test_volunteer_access_token(access_token)
-        self.Test_refresh_token(refresh_token)
         self.Test_volunteer_account(self.newUserDict, access_token)
 
     def Test_volunteer_signup(self, newUserDict, expected=201, msg="Volunteer Signup Failed"):
@@ -61,38 +60,28 @@ class VolunteerDashboardTest(TestCase):
 
         return refresh_token, access_token
 
-    def Test_volunteer_access_token(self, token):
-        # TODO: Test volunteer access token when endpoints are available
-        pass
-
-    def Test_refresh_token(self, token):
+    def Test_volunteer_account(self, userdict,  access_token, expected_end_user=1):
         """
-        Test refresh token
-        :param token: Refresh Token
-        :return: New access token
+        Test volunteer information endpoint
+        :param userdict: Dictionary used to create user.
+            Needs to have the following keys: first_name, last_name, birthday
+        :param access_token: Access token for this user
+        :param expected_end_user: Expected end_user id
         """
-        factory = APIRequestFactory()
-        refresh_token_data = 'refresh=' + token
-        refresh_token_view = TokenRefreshView.as_view()
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/volunteer/"
 
-        refresh_token_request = factory.post(path="api/refresh/", data=refresh_token_data,
-                                             content_type='application/x-www-form-urlencoded')
-        refresh_token_response = refresh_token_view(refresh_token_request)
-        self.assertEqual(refresh_token_response.status_code, 200, "Failed to refresh token.")
+        volunteer_data_response = client.get(path)
+        content = json.loads(volunteer_data_response.content)
 
-        access_token = refresh_token_response.data['access']
-        return access_token
+        # Remove email and password keys and add end_user key for assert
+        userdict['end_user'] = expected_end_user
+        userdict.pop('email', None)
+        userdict.pop('password', None)
 
-    def Test_volunteer_account(self, userDict,  access_token):
-        print("")
-        factory = APIRequestFactory()
-        path = "/api/volunteer/"
-        head = {'Authorization': 'Bearer ' + access_token}
-        volunteer_data_request = factory.get(path, head)
-        print("Request:",volunteer_data_request)
-        volunteer_dashboard_view = VolunteerAPIView.as_view()
-        volunteer_data_response = volunteer_dashboard_view(volunteer_data_request)
-        print("Response:", volunteer_data_response)
+        self.assertDictEqual(userdict, content)
+
 
 class SignupLoginTest(TestCase):
     def test_checkemail(self):
