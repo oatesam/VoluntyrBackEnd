@@ -1,15 +1,89 @@
 import json
 
 from django.test import TestCase
-from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate
+from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate, APIClient, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
+from requests import Response
 
 from .models import Organization, EndUser
 from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, \
     OrganizationAPIView, EventsAPIView
 
-
 # TODO: Test volunteer dashboard api endpoints. VolunteerAPIView, VolunteerEventsApiView
+
+class VolunteerDashboardTest(TestCase):
+    """
+    Non existing email
+    """
+    newUserDict = {"email": "testemail2@gmail.com",
+                   "password": "testpassword2",
+                   "first_name": "newuser",
+                   "last_name": "volunteer",
+                   "birthday": "1998-06-12"}
+
+    def test_volunteer_account_info(self):
+        """
+        This method validates the login credentials of the volunteer
+        """
+        self.Test_volunteer_signup(self.newUserDict)
+        refresh_token, access_token = self.Test_volunteer_login(self.newUserDict)
+        self.Test_volunteer_account(self.newUserDict, access_token)
+
+    def Test_volunteer_signup(self, newUserDict, expected=201, msg="Volunteer Signup Failed"):
+        """
+        Test volunteer signup endpoint
+        :param email
+        :param password
+        :param expected: Expected status code. Default: 201
+        :param msg: Failure message to use for assertEquals. Default: "Volunteer Signup Failed"
+        """
+        factory = APIRequestFactory()
+        signup_data = json.dumps(newUserDict)
+
+        signup_view = VolunteerSignupAPIView.as_view()
+
+        signup_request = factory.post(path="api/signup/volunteer/", data=signup_data, content_type="json")
+        signup_response = signup_view(signup_request)
+        self.assertEqual(signup_response.status_code, expected, msg)
+
+    def Test_volunteer_login(self, userdict):
+
+        factory = APIRequestFactory()
+        obtain_token_data = 'email=' + str(userdict["email"]) + '&password=' + str(userdict["password"])
+        obtain_token_view = ObtainTokenPairView.as_view()
+
+        obtain_token_request = factory.post(path='api/token/', data=obtain_token_data,
+                                            content_type='application/x-www-form-urlencoded')
+        obtain_token_response = obtain_token_view(obtain_token_request)
+        self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this volunteer.")
+
+        refresh_token = obtain_token_response.data['refresh']
+        access_token = obtain_token_response.data['access']
+
+        return refresh_token, access_token
+
+    def Test_volunteer_account(self, userdict,  access_token, expected_end_user=1):
+        """
+        Test volunteer information endpoint
+        :param userdict: Dictionary used to create user.
+            Needs to have the following keys: first_name, last_name, birthday
+        :param access_token: Access token for this user
+        :param expected_end_user: Expected end_user id
+        """
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/volunteer/"
+
+        volunteer_data_response = client.get(path)
+        content = json.loads(volunteer_data_response.content)
+
+        # Remove email and password keys and add end_user key for assert
+        userdict['end_user'] = expected_end_user
+        userdict.pop('email', None)
+        userdict.pop('password', None)
+
+        self.assertDictEqual(userdict, content)
+
 
 class SignupLoginTest(TestCase):
     def test_checkemail(self):
