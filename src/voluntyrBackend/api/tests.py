@@ -1,13 +1,15 @@
 import json
 
 from django.test import TestCase
-from rest_framework.test import APIRequestFactory, APIClient, RequestsClient
+from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate, APIClient, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
 from requests import Response
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, VolunteerAPIView
+
+from .models import Organization, EndUser
+from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, \
+    OrganizationAPIView, EventsAPIView
 
 # TODO: Test volunteer dashboard api endpoints. VolunteerAPIView, VolunteerEventsApiView
-
 
 class VolunteerDashboardTest(TestCase):
     """
@@ -149,7 +151,6 @@ class SignupLoginTest(TestCase):
         self.Test_volunteer_access_token(access_token)
         self.Test_refresh_token(refresh_token)
 
-
     def test_organization(self):
         """
         Test organization signup and login endpoints and test volunteer access and refresh tokens
@@ -172,7 +173,7 @@ class SignupLoginTest(TestCase):
         """
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "first_name": "test",
-                                 "last_name": "volunteer", "birthday": "1998-06-12"})
+                                  "last_name": "volunteer", "birthday": "1998-06-12"})
 
         signup_view = VolunteerSignupAPIView.as_view()
 

@@ -30,7 +30,13 @@ class EndUser(AbstractBaseUser, PermissionsMixin):
 class Organization(models.Model):
     end_user = models.OneToOneField(EndUser, unique=True, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
-    # TODO: Add address fields
+    street_address = models.CharField(max_length=200)
+    city = models.CharField(max_length=30)
+    state = models.CharField(max_length=20)
+    phone_number = models.CharField(max_length = 100)
+    organization_motto = models.CharField(max_length=200)
+    # TODO: Add address fields - DONE
+    # TODO: Consider potential useful fields
 
     def __str__(self):
         return self.name
@@ -52,9 +58,15 @@ class Volunteer(models.Model):
 class Event(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    date = models.DateField()
     title = models.CharField(max_length=100)
+    location = models.CharField(max_length=200)
+    description = models.CharField(max_length=200)
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
     volunteers = models.ManyToManyField(Volunteer)
+
+    # TODO: Consider potential useful fields
+   
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
