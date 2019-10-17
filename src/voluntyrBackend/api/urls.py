@@ -1,13 +1,13 @@
 from django.urls import path
-
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
-     VolunteerEventsAPIView, EventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, CheckEmailAPIView, OrganizationCreateAPIView
+    VolunteerEventsAPIView, OrganizationEventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, \
+    CheckEmailAPIView, VolunteerEventSignupAPIView
 
+# TODO: Update frontend organization dashboard to use org/events/
 
 urlpatterns = [
-    path('events/', EventsAPIView.as_view()),
     path('token/', ObtainTokenPairView.as_view()),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('signup/organization/', OrganizationSignupAPIView.as_view()),
@@ -16,5 +16,8 @@ urlpatterns = [
     path('volunteer/', VolunteerAPIView.as_view()),
     path('volunteer/events/', VolunteerEventsAPIView.as_view()),
     path('organization/', OrganizationAPIView.as_view()),
+    path('organization/events/', OrganizationEventsAPIView.as_view()),
+    # path('events/', ), TODO: Events search
+    path('event/<int:event_id>/volunteer/', VolunteerEventSignupAPIView.as_view())
 ]
 

@@ -1,8 +1,11 @@
+from django.conf import settings
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.conf import settings
 
 from .models import Event, Volunteer, Organization, EndUser
+
+
+# TODO: Update frontend Event object to have an ID field as the first field.
 
 
 class EventsSerializer(serializers.ModelSerializer):
@@ -11,7 +14,7 @@ class EventsSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Event
-        fields = ['title', 'start_time', 'end_time', 'date', 'location', 'description', 'organization']
+        fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'organization']
 
 
 class ObtainTokenPairSerializer(TokenObtainPairSerializer):
@@ -49,7 +52,6 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         return scope
 
 
-
 class EndUserSerializer(serializers.ModelSerializer):
     """
     Serializer for an EndUser instance
@@ -70,12 +72,13 @@ class VolunteerSerializer(serializers.ModelSerializer):
 
 class VolunteerEventsSerializer(serializers.ModelSerializer):
     """
+    TODO: Update frontend dashboard for new serializer fields: id
     Serializer for events presented to volunteers. Shows details meant only for volunteers.
     """
 
     class Meta:
         model = Event
-        fields = ['start_time', 'end_time', 'title', 'organization']
+        fields = ['start_time', 'end_time', 'title', 'organization', 'id']
 
     organization = serializers.StringRelatedField()
 

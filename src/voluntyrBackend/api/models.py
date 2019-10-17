@@ -1,9 +1,8 @@
-from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.db import models
+from django.utils import timezone
 
 from .managers import EndUserManager
-
-from django.utils import timezone
 
 
 class EndUser(AbstractBaseUser, PermissionsMixin):
@@ -29,13 +28,12 @@ class EndUser(AbstractBaseUser, PermissionsMixin):
 
 class Organization(models.Model):
     end_user = models.OneToOneField(EndUser, unique=True, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200)
-    street_address = models.CharField(max_length=200)
-    city = models.CharField(max_length=30)
-    state = models.CharField(max_length=20)
-    phone_number = models.CharField(max_length = 100)
+    name = models.CharField(max_length=200, blank=False)
+    street_address = models.CharField(max_length=200, blank=False)
+    city = models.CharField(max_length=30, blank=False)
+    state = models.CharField(max_length=20, blank=False)
+    phone_number = models.CharField(max_length=100, blank=False)
     organization_motto = models.CharField(max_length=200)
-    # TODO: Add address fields - DONE
     # TODO: Consider potential useful fields
 
     def __str__(self):
@@ -63,7 +61,7 @@ class Event(models.Model):
     location = models.CharField(max_length=200)
     description = models.CharField(max_length=200)
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
-    volunteers = models.ManyToManyField(Volunteer)
+    volunteers = models.ManyToManyField(Volunteer, blank=True)
 
     # TODO: Consider potential useful fields
    
