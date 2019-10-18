@@ -3,7 +3,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
-     VolunteerEventsAPIView, EventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, CheckEmailAPIView, OrganizationCreateAPIView
+     VolunteerEventsAPIView, EventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, CheckEmailAPIView, OrganizationCreateAPIView, OrganizationEventAPIView
 
 
 urlpatterns = [
@@ -16,5 +16,6 @@ urlpatterns = [
     path('volunteer/', VolunteerAPIView.as_view()),
     path('volunteer/events/', VolunteerEventsAPIView.as_view()),
     path('organization/', OrganizationAPIView.as_view()),
+    path('organization/event/', OrganizationEventAPIView().as_view())
 ]
 
