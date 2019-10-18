@@ -63,7 +63,7 @@ class Event(models.Model):
     location = models.CharField(max_length=200)
     description = models.CharField(max_length=200)
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
-    volunteers = models.ManyToManyField(Volunteer)
+    volunteers = models.ManyToManyField(Volunteer, blank=True)
 
     # TODO: Consider potential useful fields
    

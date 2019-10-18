@@ -15,7 +15,7 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
 
 
 import json
-
+import datetime
 
 class AuthCheck:
     @classmethod
@@ -81,6 +81,14 @@ class AuthCheck:
         """
         return token.get('user_id')
 
+class VolunteerEventSignupView(generics.ListAPIView):
+    """
+    Class View for user(volunteer) to retrieve all the upcoming events
+    """
+    serializer_class = EventsSerializer
+
+    def get_queryset(self):
+        return Event.objects.filter(start_time__gte=datetime.now())
 
 class ObtainTokenPairView(TokenObtainPairView):
     """
