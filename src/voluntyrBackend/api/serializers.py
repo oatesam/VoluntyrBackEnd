@@ -72,13 +72,13 @@ class VolunteerSerializer(serializers.ModelSerializer):
 
 class VolunteerEventsSerializer(serializers.ModelSerializer):
     """
-    TODO: Update frontend dashboard for new serializer fields: id
+    TODO: Update frontend dashboard for new serializer fields: id, title, date, location, description
     Serializer for events presented to volunteers. Shows details meant only for volunteers.
     """
 
     class Meta:
         model = Event
-        fields = ['start_time', 'end_time', 'title', 'organization', 'id']
+        fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'organization']
 
     organization = serializers.StringRelatedField()
 

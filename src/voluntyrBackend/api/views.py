@@ -1,19 +1,17 @@
-from rest_framework import generics, status, request, mixins
-from rest_framework.response import Response
-
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.tokens import AccessToken
+import json
 
 from django.conf import settings
-from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError
+from django.utils import timezone
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-
-from .models import Event, Organization,Volunteer, EndUser
-
-from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer,VolunteerEventsSerializer
-
-import json
+from .models import Event, Organization, Volunteer, EndUser
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
+    EndUserSerializer, VolunteerEventsSerializer
 
 
 class AuthCheck:
@@ -283,11 +281,20 @@ class VolunteerAPIView(generics.RetrieveAPIView):
         return AuthCheck.unauthorized_response()
 
 
-class SearchEventsAPIView(generics.CreateAPIView):
+class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
     """
-    Class view for returning a list of events satisfying the search criteria in the POST data
+    Class view for returning a list of events which haven't happened yet.
     """
-    pass
+
+    serializer_class = VolunteerEventsSerializer
+
+    def get_queryset(self):
+        return Event.objects.filter(start_time__gte=timezone.now())
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()
 
 
 class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
