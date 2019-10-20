@@ -5,7 +5,7 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     VolunteerEventsAPIView, OrganizationEventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView
 
-# TODO: Update frontend organization dashboard to use org/events/
+# [Done] TODO: Update frontend organization dashboard to use org/events/
 
 urlpatterns = [
     path('token/', ObtainTokenPairView.as_view()),

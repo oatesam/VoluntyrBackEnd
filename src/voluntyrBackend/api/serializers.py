@@ -5,7 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Event, Volunteer, Organization, EndUser
 
 
-# TODO: Update frontend Event object to have an ID field as the first field.
+# [Done] TODO: Update frontend Event object to have an ID field as the first field.
 
 
 class EventsSerializer(serializers.ModelSerializer):
@@ -72,7 +72,6 @@ class VolunteerSerializer(serializers.ModelSerializer):
 
 class VolunteerEventsSerializer(serializers.ModelSerializer):
     """
-    TODO: Update frontend dashboard for new serializer fields: id, title, date, location, description
     Serializer for events presented to volunteers. Shows details meant only for volunteers.
     """
 
