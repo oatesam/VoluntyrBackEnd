@@ -5,11 +5,33 @@ from rest_framework.test import APIRequestFactory, APITestCase, force_authentica
 from rest_framework_simplejwt.views import TokenRefreshView
 from requests import Response
 
-from .models import Organization, EndUser
+from .models import Organization, EndUser,Event
 from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, \
     OrganizationAPIView, EventsAPIView
 
 # TODO: Test volunteer dashboard api endpoints. VolunteerAPIView, VolunteerEventsApiView
+class Orgnization_Create_Event(TestCase):
+    """
+    Test the endpoint to create event
+    """
+
+
+    def test_create_event(self):
+        orgEmail = "tester@gmail.com"
+        password = "testpassword"
+        organization=SignupLoginTest.Test_organization_signup(self,orgEmail,password)
+        refresh_token,access_token=SignupLoginTest.Test_organization_login(self,orgEmail,password)
+        self.create_event(access_token)
+
+    def create_event(self,access_token,expected=201):
+        newEvent={"start_time":"2019-10-19 12:00:00","end_time":"2019-10-20 13:00:00","date":"2019-10-19","title":"testActivity","location":"SICE","description":"testing endpoint"}
+        newEvent_data = json.dumps(newEvent)
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/organization/event/"
+
+        create_event_response = client.post(path,json=newEvent)
+        self.assertEqual(create_event_response.status_code,expected)
 
 class VolunteerDashboardTest(TestCase):
     """

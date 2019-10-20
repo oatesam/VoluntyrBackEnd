@@ -33,8 +33,9 @@ class Organization(models.Model):
     street_address = models.CharField(max_length=200)
     city = models.CharField(max_length=30)
     state = models.CharField(max_length=20)
-    phone_number = models.CharField(max_length = 100)
+    phone_number = models.CharField(max_length=100)
     organization_motto = models.CharField(max_length=200)
+
     # TODO: Add address fields - DONE
     # TODO: Consider potential useful fields
 
@@ -63,10 +64,9 @@ class Event(models.Model):
     location = models.CharField(max_length=200)
     description = models.CharField(max_length=200)
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
-    volunteers = models.ManyToManyField(Volunteer)
+    volunteers = models.ManyToManyField(Volunteer, blank=True)
 
     # TODO: Consider potential useful fields
-   
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
