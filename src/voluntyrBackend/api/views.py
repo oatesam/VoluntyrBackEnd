@@ -105,35 +105,6 @@ class OrganizationEventsAPIView(generics.ListCreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-# class OrganizationCreateAPIView(generics.CreateAPIView, mixins.RetrieveModelMixin):
-#     """
-#     TODO: Can this class be removed?
-#     Class View for new organization signups.
-#     """
-#     authentication_classes = []
-#     permission_classes = []
-#     queryset = Organization.objects.all()
-#     serializer_class = OrganizationSerializer
-#
-#     def create(self, request, *args, **kwargs):
-#         """
-#         Creates a new organization with the email, password, and name provided in the POST request body.
-#         :return: Status 201 if the organization is created or status 409 if the email already has an EndUser
-#         """
-#         print("test")
-#         body = json.loads(str(request.body, encoding='utf-8'))
-#         try:
-#             end_user = EndUser.objects.create_user(body['email'], body['password'])
-#             print("\n\n\n\n\n\n\n\n\nBody type: ")
-#             print(type(body))
-#             organization = Organization.objects.create(name=body['name'], end_user_id=end_user.id)
-#             serializer = OrganizationSerializer(organization)
-#             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
-#         except IntegrityError:
-#             return Response(data={"error": "Organization with this email already exists."},
-#                             status=status.HTTP_409_CONFLICT)
-
-
 class OrganizationAPIView(generics.RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
@@ -267,8 +238,6 @@ class VolunteerAPIView(generics.RetrieveAPIView):
     Class View for volunteer to see their account details.
     """
     serializer_class = VolunteerSerializer
-
-    # TODO: Scope protect
 
     def get_object(self):
         req = self.request
