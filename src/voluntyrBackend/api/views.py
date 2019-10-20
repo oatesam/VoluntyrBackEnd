@@ -186,7 +186,6 @@ class OrganizationSignupAPIView(generics.CreateAPIView):
 
             missing_keys, body = self._check_dict(body, required, end_user)
             if len(missing_keys) > 0:
-                print("Missing keys: %s" + str(missing_keys))
                 return Response(data={"error": "Request was missing keys: " + ", ".join(missing_keys)},
                                 status=status.HTTP_400_BAD_REQUEST)
 
