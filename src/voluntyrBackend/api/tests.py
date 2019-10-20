@@ -394,6 +394,34 @@ class VolunteerEventSignupTest(TestCase):
         return {"refresh": refresh_token, "access": access_token}
 
 
+class OrganizationDashboardTest(TestCase):
+
+    def test_organization_account_info(self):
+        """
+        Validate the organization information passed from endpoint
+
+        """
+        organizationDict = {
+            "email": "testorgemail10@gmail.com",
+            "password": "testpassword123",
+            "name": "testOrg1",
+            "street_address": "1 IU st",
+            "city": "Bloomington",
+            "state": "Indiana",
+            "phone_number": "1-800-000-0000",
+            "organization_motto": "The motto"
+        }
+        SignupLoginTest.Test_organization_signup(self, organizationDict)
+        refresh_token, access_token = SignupLoginTest.Test_organization_login(self, organizationDict)
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/organization/"
+
+        volunteer_data_response = client.get(path)
+        content = json.loads(volunteer_data_response.content)
+        self.assertEqual(organizationDict['name'], content['name'])
+
+
 class VolunteerDashboardTest(TestCase):
     """
     Non existing email
@@ -430,7 +458,6 @@ class VolunteerDashboardTest(TestCase):
         self.assertEqual(signup_response.status_code, expected, msg)
 
     def Test_volunteer_login(self, userdict):
-
         factory = APIRequestFactory()
         obtain_token_data = 'email=' + str(userdict["email"]) + '&password=' + str(userdict["password"])
         obtain_token_view = ObtainTokenPairView.as_view()
@@ -445,7 +472,7 @@ class VolunteerDashboardTest(TestCase):
 
         return refresh_token, access_token
 
-    def Test_volunteer_account(self, userdict,  access_token, expected_end_user=1):
+    def Test_volunteer_account(self, userdict, access_token, expected_end_user=1):
         """
         Test volunteer information endpoint
         :param userdict: Dictionary used to create user.
