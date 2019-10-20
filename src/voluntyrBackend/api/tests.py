@@ -401,18 +401,25 @@ class OrganizationDashboardTest(TestCase):
         Validate the organization information passed from endpoint
 
         """
-        email = "devtester@gmail.com"
-        password = "testpassword"
-        name = "testerUnited"
-        SignupLoginTest.Test_organization_signup(self, email, password)
-        refresh_token, access_token = SignupLoginTest.Test_organization_login(self, email, password)
+        organizationDict = {
+            "email": "testorgemail10@gmail.com",
+            "password": "testpassword123",
+            "name": "testOrg1",
+            "street_address": "1 IU st",
+            "city": "Bloomington",
+            "state": "Indiana",
+            "phone_number": "1-800-000-0000",
+            "organization_motto": "The motto"
+        }
+        SignupLoginTest.Test_organization_signup(self, organizationDict)
+        refresh_token, access_token = SignupLoginTest.Test_organization_login(self, organizationDict)
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + access_token})
         path = "http://testserver/api/organization/"
 
         volunteer_data_response = client.get(path)
         content = json.loads(volunteer_data_response.content)
-        self.assertEqual('TestOrg', content['name'])
+        self.assertEqual(organizationDict['name'], content['name'])
 
 
 class VolunteerDashboardTest(TestCase):
