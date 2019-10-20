@@ -1,23 +1,22 @@
-from rest_framework import generics, status, request, mixins
-from rest_framework.response import Response
-
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.tokens import AccessToken
+import json
 
 from django.conf import settings
-from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError
+from django.utils import timezone
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-
-from .models import Event, Organization,Volunteer, EndUser
-
-from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, EndUserSerializer,VolunteerEventsSerializer
-
-
-import json
+from .models import Event, Organization, Volunteer, EndUser
+from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
+    EndUserSerializer, VolunteerEventsSerializer
 
 
 class AuthCheck:
+    #TODO add getVolunteerID
+    #TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
@@ -31,7 +30,7 @@ class AuthCheck:
     @classmethod
     def is_authorized(cls, req, required_scope):
         """
-        Checks whether the JWT token in request has access to this view.
+        Checks whether the scope of the JWT token in req has access to this view.
         :param req: request received by view
         :param required_scope: scope required for view. From settings.SCOPE_TYPES
         :return: True if authorized, false otherwise
@@ -89,14 +88,17 @@ class ObtainTokenPairView(TokenObtainPairView):
     serializer_class = ObtainTokenPairSerializer
 
 
-class EventsAPIView(generics.ListCreateAPIView):
+class OrganizationEventsAPIView(generics.ListCreateAPIView):
+    """
+    Class view to get events run by the organization in the requesting JWT
+    """
     serializer_class = EventsSerializer
 
     def get_queryset(self):
-        req=self.request
+        req = self.request
         user_id = AuthCheck.get_user_id(req)
         organization = Organization.objects.get(end_user_id=user_id)
-        org_id=organization.id
+        org_id = organization.id
         return Event.objects.filter(organization_id=org_id)
 
     def list(self, req, *args, **kwargs):
@@ -105,41 +107,16 @@ class EventsAPIView(generics.ListCreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-class OrganizationCreateAPIView(generics.CreateAPIView, mixins.RetrieveModelMixin):
-    """
-    Class View for new organization signups.
-    """
-    authentication_classes = []
-    permission_classes = []
-    queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
-
-    def create(self, request, *args, **kwargs):
-        """
-        Creates a new organization with the email, password, and name provided in the POST request body.
-        :return: Status 201 if the organization is created or status 409 if the email already has an EndUser
-        """
-        body = json.loads(str(request.body, encoding='utf-8'))
-        try:
-            end_user = EndUser.objects.create_user(body['email'], body['password'])
-            organization = Organization.objects.create(name=body['name'], end_user_id=end_user.id)
-            serializer = OrganizationSerializer(organization)
-            return Response(data=serializer.data, status=status.HTTP_201_CREATED)
-        except IntegrityError:
-            return Response(data={"error": "Organization with this email already exists."},
-                            status=status.HTTP_409_CONFLICT)
-
-
 class OrganizationAPIView(generics.RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
-    # TODO: Scope protect
-
     def get_object(self):
-        req= self.request
-        org_id= AuthCheck.get_user_id(req)
+        if AuthCheck.is_authorized(self.request, settings.SCOPE_TYPES['Organization']):
+            req = self.request
+            org_id = AuthCheck.get_user_id(req)
 
-        return Organization.objects.get(end_user_id=org_id)
+            return Organization.objects.get(end_user_id=org_id)
+        return AuthCheck.unauthorized_response()
 
 
 class VolunteerSignupAPIView(generics.CreateAPIView):
@@ -168,7 +145,8 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
             serializer = VolunteerSerializer(volunteer)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
-            return Response(data={"error": "Volunteer with this email already exists."}, status=status.HTTP_409_CONFLICT)
+            return Response(data={"error": "Volunteer with this email already exists."},
+                            status=status.HTTP_409_CONFLICT)
 
 
 class VolunteerEventsAPIView(generics.ListAPIView):
@@ -182,11 +160,13 @@ class VolunteerEventsAPIView(generics.ListAPIView):
     def get_queryset(self):
         req = self.request
         user_id = AuthCheck.get_user_id(req)
-        return Event.objects.filter(volunteers__id=user_id)
+        volunteer=Volunteer.objects.get(end_user_id=user_id)
+        return Event.objects.filter(volunteers__id=volunteer.id)
 
 
 class OrganizationSignupAPIView(generics.CreateAPIView):
     """
+    TODO: [Frontend] Needs to ensure all fields are provided
     Class View for new organization signups.
     """
     authentication_classes = []
@@ -195,22 +175,38 @@ class OrganizationSignupAPIView(generics.CreateAPIView):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
 
-    def create(self, request, *args, **kwargs):
+    def create(self, req, *args, **kwargs):
         """
         Creates a new organization with the email, password, and name provided in the POST request body.
         :return: Status 201 if the organization is created or status 409 if the email already has an EndUser
         """
-        body = json.loads(str(request.body, encoding='utf-8'))
-
+        body = json.loads(str(req.body, encoding='utf-8'))
         try:
+            required = ('end_user', 'name', 'street_address', 'city', 'state', 'phone_number')
             end_user = EndUser.objects.create_user(body['email'], body['password'])
-            organization = Organization.objects.create(name=body['name'], end_user_id=end_user.id)
 
+            missing_keys, body = self._check_dict(body, required, end_user)
+            if len(missing_keys) > 0:
+                return Response(data={"error": "Request was missing keys: " + ", ".join(missing_keys)},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            organization = Organization.objects.create(**body)
             serializer = OrganizationSerializer(organization)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
             return Response(data={"error": "Organization with this email already exists."},
                             status=status.HTTP_409_CONFLICT)
+
+    def _check_dict(self, data, required, end_user):
+        data.pop('email', False)
+        data.pop('password', False)
+        data['end_user'] = end_user
+
+        if all(k in data for k in required):
+            return [], data
+        else:
+            missing = list(set(required) - set(data.keys()))
+            return missing, None
 
 
 class CheckEmailAPIView(generics.CreateAPIView):
@@ -247,8 +243,6 @@ class VolunteerAPIView(generics.RetrieveAPIView):
     """
     serializer_class = VolunteerSerializer
 
-    # TODO: Scope protect
-
     def get_object(self):
         req = self.request
         user_id = AuthCheck.get_user_id(req)
@@ -259,3 +253,83 @@ class VolunteerAPIView(generics.RetrieveAPIView):
             return super().retrieve(req, *args, **kwargs)
         return AuthCheck.unauthorized_response()
 
+
+class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
+    """
+    Class view for returning a list of events which haven't happened yet.
+    """
+
+    serializer_class = VolunteerEventsSerializer
+
+    def get_queryset(self):
+        return Event.objects.filter(start_time__gte=timezone.now())
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()
+
+
+class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
+    """
+    Class view for volunteers to signup for events
+    """
+    serializer_class = EventsSerializer
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def put(self, req, *args, **kwargs):
+        """
+        Endpoint to add volunteer to requesting event
+        :param req: Request
+        :return:    Returns status 400 if the event doesn't exist,
+                    or status 202 if the volunteer was successfully signed up.
+        """
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            user_id = AuthCheck.get_user_id(req)
+            volunteer = Volunteer.objects.get(end_user_id=user_id)
+            vol_id = volunteer.id
+
+            try:
+                current_event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+            current_event.volunteers.add(vol_id)
+            current_event.save()
+            return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
+                            status=status.HTTP_202_ACCEPTED)
+
+        return AuthCheck.unauthorized_response()
+
+
+class OrganizationEventAPIView(generics.CreateAPIView):
+    """
+    Class View for organization to create new event
+    """
+    serializer_class = EventsSerializer
+
+    def create(self, request, *args, **kwargs):
+        """
+        POST endpoint to create new event
+        Receives JSON in body
+        :return 200 upon successful creation
+        """
+        if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
+            try:
+                user_id = AuthCheck.get_user_id(request)
+                organization = Organization.objects.get(end_user_id=user_id)
+                org_id = organization.id
+                body = json.loads(str(request.body, encoding='utf-8'))
+                event = Event.objects.create(start_time=body['start_time'], end_time=body['end_time'],
+                                             date=body['date'],
+                                             title=body['title'], location=body['location'],
+                                             description=body['description'],
+                                             organization_id=org_id)
+
+                return Response(status=status.HTTP_201_CREATED)
+            except IntegrityError:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        return AuthCheck.unauthorized_response()
