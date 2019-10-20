@@ -10,6 +10,7 @@ from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSign
 
 
 # TODO: Refactor Tests.py to be more simple and modular
+# TODO: test for double signup of events
 
 
 class EventSearchTest(TestCase):

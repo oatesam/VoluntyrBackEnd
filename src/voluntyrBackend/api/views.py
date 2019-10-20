@@ -15,6 +15,8 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
 
 
 class AuthCheck:
+    #TODO add getVolunteerID
+    #TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
@@ -157,7 +159,8 @@ class VolunteerEventsAPIView(generics.ListAPIView):
     def get_queryset(self):
         req = self.request
         user_id = AuthCheck.get_user_id(req)
-        return Event.objects.filter(volunteers__id=user_id)
+        volunteer=Volunteer.objects.get(end_user_id=user_id)
+        return Event.objects.filter(volunteers__id=volunteer.id)
 
 
 class OrganizationSignupAPIView(generics.CreateAPIView):
@@ -285,13 +288,15 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
         """
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
             user_id = AuthCheck.get_user_id(req)
+            volunteer = Volunteer.objects.get(end_user_id=user_id)
+            vol_id = volunteer.id
 
             try:
                 current_event = self.get_object()
             except ObjectDoesNotExist:
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
-            current_event.volunteers.add(user_id)
+            current_event.volunteers.add(vol_id)
             current_event.save()
             return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                             status=status.HTTP_202_ACCEPTED)
