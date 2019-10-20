@@ -283,6 +283,7 @@ class OrganizationEventAPIView(generics.CreateAPIView):
                                              title=body['title'], location=body['location'],
                                              description=body['description'],
                                              organization_id=org_id)
+
                 return Response(status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
