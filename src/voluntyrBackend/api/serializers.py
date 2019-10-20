@@ -90,3 +90,4 @@ class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
+

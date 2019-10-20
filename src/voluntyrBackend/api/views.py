@@ -95,7 +95,7 @@ class OrganizationEventsAPIView(generics.ListCreateAPIView):
     serializer_class = EventsSerializer
 
     def get_queryset(self):
-        req=self.request
+        req = self.request
         user_id = AuthCheck.get_user_id(req)
         organization = Organization.objects.get(end_user_id=user_id)
         org_id = organization.id
@@ -110,13 +110,13 @@ class OrganizationEventsAPIView(generics.ListCreateAPIView):
 class OrganizationAPIView(generics.RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
-    # TODO: Scope protect
-
     def get_object(self):
-        req= self.request
-        org_id= AuthCheck.get_user_id(req)
+        if AuthCheck.is_authorized(self.request, settings.SCOPE_TYPES['Organization']):
+            req = self.request
+            org_id = AuthCheck.get_user_id(req)
 
-        return Organization.objects.get(end_user_id=org_id)
+            return Organization.objects.get(end_user_id=org_id)
+        return AuthCheck.unauthorized_response()
 
 
 class VolunteerSignupAPIView(generics.CreateAPIView):
@@ -145,7 +145,8 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
             serializer = VolunteerSerializer(volunteer)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
-            return Response(data={"error": "Volunteer with this email already exists."}, status=status.HTTP_409_CONFLICT)
+            return Response(data={"error": "Volunteer with this email already exists."},
+                            status=status.HTTP_409_CONFLICT)
 
 
 class VolunteerEventsAPIView(generics.ListAPIView):
@@ -299,5 +300,36 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
             current_event.save()
             return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                             status=status.HTTP_202_ACCEPTED)
+
+        return AuthCheck.unauthorized_response()
+
+
+class OrganizationEventAPIView(generics.CreateAPIView):
+    """
+    Class View for organization to create new event
+    """
+    serializer_class = EventsSerializer
+
+    def create(self, request, *args, **kwargs):
+        """
+        POST endpoint to create new event
+        Receives JSON in body
+        :return 200 upon successful creation
+        """
+        if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
+            try:
+                user_id = AuthCheck.get_user_id(request)
+                organization = Organization.objects.get(end_user_id=user_id)
+                org_id = organization.id
+                body = json.loads(str(request.body, encoding='utf-8'))
+                event = Event.objects.create(start_time=body['start_time'], end_time=body['end_time'],
+                                             date=body['date'],
+                                             title=body['title'], location=body['location'],
+                                             description=body['description'],
+                                             organization_id=org_id)
+
+                return Response(status=status.HTTP_201_CREATED)
+            except IntegrityError:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
 
         return AuthCheck.unauthorized_response()

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, RequestsClient
@@ -13,11 +13,48 @@ from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSign
 # TODO: test for double signup of events
 
 
+class Orgnization_Create_Event(TestCase):
+    """
+    Test the endpoint to create event
+    """
+
+    def test_create_event(self):
+        organization_dict = {
+            "email": "testorgemail10@gmail.com",
+            "password": "testpassword123",
+            "name": "testOrg1",
+            "street_address": "1 IU st",
+            "city": "Bloomington",
+            "state": "Indiana",
+            "phone_number": "1-800-000-0000",
+            "organization_motto": "The motto"
+        }
+        SignupLoginTest.Test_organization_signup(self, organization_dict)
+        refresh_token, access_token = SignupLoginTest.Test_organization_login(self, organization_dict)
+        self.create_event(access_token)
+
+    def create_event(self, access_token, expected=201):
+        newEvent = {
+            "start_time": "2019-10-19 12:00:00-05:00",
+            "end_time": "2019-10-20 13:00:00-05:00",
+            "date": "2019-10-19",
+            "title": "testActivity",
+            "location": "SICE",
+            "description": "testing endpoint"
+        }
+
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/organization/event/"
+
+        create_event_response = client.post(path, json=newEvent)
+        self.assertEqual(create_event_response.status_code, expected)
+
+
 class EventSearchTest(TestCase):
 
     # TODO: Fix date dependency to more future proof solution.
     today = datetime.today().day
-    print(today)
 
     events = [
         {

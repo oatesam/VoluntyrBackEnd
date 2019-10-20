@@ -34,6 +34,8 @@ class Organization(models.Model):
     state = models.CharField(max_length=20, blank=False)
     phone_number = models.CharField(max_length=100, blank=False)
     organization_motto = models.CharField(max_length=200)
+
+    # TODO: Add address fields - DONE
     # TODO: Consider potential useful fields
 
     def __str__(self):
@@ -64,7 +66,6 @@ class Event(models.Model):
     volunteers = models.ManyToManyField(Volunteer, blank=True)
 
     # TODO: Consider potential useful fields
-   
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
