@@ -13,26 +13,31 @@ from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSign
 
 
 class EventSearchTest(TestCase):
+
+    # TODO: Fix date dependency to more future proof solution.
+    today = datetime.today().day
+    print(today)
+
     events = [
         {
-            'start_time': '2019-10-17T17:00:00-05:00',
-            'end_time': '2019-10-17T18:00:00-05:00',
+            'start_time': '2019-10-' + str(today) + 'T17:00:00-05:00',
+            'end_time': '2019-10-' + str(today) + 'T18:00:00-05:00',
             'date': '2019-10-17',
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-10-19T17:00:00-05:00',
-            'end_time': '2019-10-19T18:00:00-05:00',
+            'start_time': '2019-10-' + str(today + 2) + 'T17:00:00-05:00',
+            'end_time': '2019-10-' + str(today + 2) + 'T18:00:00-05:00',
             'date': '2019-10-19',
             'title': 'Second event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-10-20T17:00:00-05:00',
-            'end_time': '2019-10-20T18:00:00-05:00',
+            'start_time': '2019-10-' + str(today + 3) + 'T17:00:00-05:00',
+            'end_time': '2019-10-' + str(today + 3) + 'T18:00:00-05:00',
             'date': '2019-10-20',
             'title': 'Third event',
             'location': 'IU',
