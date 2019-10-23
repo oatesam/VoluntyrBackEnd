@@ -13,143 +13,7 @@ from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSign
 # TODO: test for double signup of events
 
 
-class Orgnization_Create_Event(TestCase):
-    """
-    Test the endpoint to create event
-    """
-
-    def test_create_event(self):
-        organization_dict = {
-            "email": "testorgemail10@gmail.com",
-            "password": "testpassword123",
-            "name": "testOrg1",
-            "street_address": "1 IU st",
-            "city": "Bloomington",
-            "state": "Indiana",
-            "phone_number": "1-800-000-0000",
-            "organization_motto": "The motto"
-        }
-        SignupLoginTest.Test_organization_signup(self, organization_dict)
-        refresh_token, access_token = SignupLoginTest.Test_organization_login(self, organization_dict)
-        self.create_event(access_token)
-
-    def create_event(self, access_token, expected=201):
-        newEvent = {
-            "start_time": "2019-10-19 12:00:00-05:00",
-            "end_time": "2019-10-20 13:00:00-05:00",
-            "date": "2019-10-19",
-            "title": "testActivity",
-            "location": "SICE",
-            "description": "testing endpoint"
-        }
-
-        client = RequestsClient()
-        client.headers.update({'Authorization': 'Bearer ' + access_token})
-        path = "http://testserver/api/organization/event/"
-
-        create_event_response = client.post(path, json=newEvent)
-        self.assertEqual(create_event_response.status_code, expected)
-
-
-class EventSearchTest(TestCase):
-
-    # TODO: Fix date dependency to more future proof solution.
-    today = datetime.today().day
-
-    events = [
-        {
-            'start_time': '2019-10-' + str(today) + 'T17:00:00-05:00',
-            'end_time': '2019-10-' + str(today) + 'T18:00:00-05:00',
-            'date': '2019-10-17',
-            'title': 'First event',
-            'location': 'IU',
-            'description': 'Test event'
-        },
-        {
-            'start_time': '2019-10-' + str(today + 2) + 'T17:00:00-05:00',
-            'end_time': '2019-10-' + str(today + 2) + 'T18:00:00-05:00',
-            'date': '2019-10-19',
-            'title': 'Second event',
-            'location': 'IU',
-            'description': 'Test event'
-        },
-        {
-            'start_time': '2019-10-' + str(today + 3) + 'T17:00:00-05:00',
-            'end_time': '2019-10-' + str(today + 3) + 'T18:00:00-05:00',
-            'date': '2019-10-20',
-            'title': 'Third event',
-            'location': 'IU',
-            'description': 'Test event'
-        },
-    ]
-
-    volunteerDict = {
-        "email": "testemail2@gmail.com",
-        "password": "testpassword2",
-        "first_name": "newuser",
-        "last_name": "volunteer",
-        "birthday": "1998-06-12"
-    }
-    volunteerTokens = {}
-
-    organizationDict = {
-        "email": "testorgemail10@gmail.com",
-        "password": "testpassword123",
-        "name": "testOrg1",
-        "street_address": "1 IU st",
-        "city": "Bloomington",
-        "state": "Indiana",
-        "phone_number": "1-800-000-0000",
-        "organization_motto": "The motto"
-    }
-    organizationTokens = {}
-
-    def setUp(self):
-        self.volunteer_signup(self.volunteerDict)
-        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
-        self.organization_signup(self.organizationDict)
-        self.organizationTokens = self.organization_login(self.organizationDict)
-        self.expectedEventIds = self.make_events(self.events)
-
-    def test_event_search(self):
-        client = RequestsClient()
-        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
-        path = "http://testserver/api/events/"
-
-        data_response = client.get(path)
-        content = json.loads(data_response.content)
-        status = data_response.status_code
-
-        self.assertEqual(status, 200, "Search status was not 200")
-
-        expected_dicts = self.make_assert_dicts(self.events[1:3], self.expectedEventIds[1:3], self.organizationDict['name'])
-        self.assertEqual(len(content), len(expected_dicts), "API failed to return expected number of events")
-        for i in range(0, len(content)):
-            self.assertDictEqual(content[i], expected_dicts[i], "A returned JSON didn't match the expected dict.")
-
-    def make_assert_dicts(self, expected_events, expected_ids, organization_name):
-        self.assertEqual(len(expected_events), len(expected_ids),
-                         "Length of event dictionary list needs to equal length of expected id list. "
-                         "\nLength of expected id: %d\nLength of expected events: %d" % (len(expected_ids),
-                                                                                         len(expected_events)))
-        for i in range(0, len(expected_events)):
-            current_id = expected_ids[i]
-            current_dict = expected_events[i]
-            current_dict['organization'] = organization_name
-            current_dict['id'] = current_id
-        return expected_events
-
-    def make_events(self, events):
-        event_ids = []
-        for e in events:
-            event_ids.append(self.new_event(e))
-        return event_ids
-
-    def new_event(self, event_dict):
-        event_dict['organization'] = Organization.objects.get(id=1)
-        event = Event.objects.create(**event_dict)
-        return event.id
-
+class Utilities:
     def volunteer_signup(self, user_dict, expected=201, msg="Volunteer Signup Failed"):
         """
         Test volunteer signup endpoint
@@ -226,7 +90,150 @@ class EventSearchTest(TestCase):
         return {"refresh": refresh_token, "access": access_token}
 
 
-class VolunteerEventSignupTest(TestCase):
+class OrganizationCreateEvent(TestCase, Utilities):
+    """
+    Test the endpoint to create event
+    """
+
+    def test_create_event(self):
+        organization_dict = {
+            "email": "testorgemail5@gmail.com",
+            "password": "testpassword123",
+            "name": "testOrg1",
+            "street_address": "1 IU st",
+            "city": "Bloomington",
+            "state": "Indiana",
+            "phone_number": "1-800-000-0000",
+            "organization_motto": "The motto"
+        }
+        Utilities.organization_signup(self, organization_dict)
+        tokens = Utilities.organization_login(self, organization_dict)
+        self.create_event(tokens['access'])
+
+    def create_event(self, access_token, expected=201):
+        newEvent = {
+            "start_time": "2019-10-19 12:00:00-05:00",
+            "end_time": "2019-10-20 13:00:00-05:00",
+            "date": "2019-10-19",
+            "title": "testActivity",
+            "location": "SICE",
+            "description": "testing endpoint"
+        }
+
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/organization/event/"
+
+        create_event_response = client.post(path, json=newEvent)
+        self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
+
+
+class EventSearchTest(TestCase, Utilities):
+
+    today = datetime.today().day
+
+    events = [
+        {
+            'start_time': '2019-10-' + str(today) + 'T17:00:00-05:00',
+            'end_time': '2019-10-' + str(today) + 'T18:00:00-05:00',
+            'date': '2019-10-' + str(today),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': '2019-10-' + str(today + 2) + 'T17:00:00-05:00',
+            'end_time': '2019-10-' + str(today + 2) + 'T18:00:00-05:00',
+            'date': '2019-10-' + str(today + 2),
+            'title': 'Second event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': '2019-10-' + str(today + 3) + 'T17:00:00-05:00',
+            'end_time': '2019-10-' + str(today + 3) + 'T18:00:00-05:00',
+            'date': '2019-10-' + str(today + 3),
+            'title': 'Third event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+    ]
+
+    volunteerDict = {
+        "email": "testemail2@gmail.com",
+        "password": "testpassword2",
+        "first_name": "newuser",
+        "last_name": "volunteer",
+        "birthday": "1998-06-12"
+    }
+    volunteerTokens = {}
+
+    organizationDict = {
+        "email": "testorgemail10@gmail.com",
+        "password": "testpassword123",
+        "name": "testOrg1",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens = {}
+
+    def setUp(self):
+        self.volunteer_signup(self.volunteerDict)
+        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
+        self.organization_signup(self.organizationDict)
+        self.organizationTokens = self.organization_login(self.organizationDict)
+        self.expectedEventIds = self.make_events(self.events)
+
+    def test_event_search(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/events/"
+
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        status = data_response.status_code
+
+        self.assertEqual(status, 200, "Search status was not 200")
+
+        time = datetime.time(datetime.today())
+        if time.hour >= 17:
+            slice_start = 1
+        else:
+            slice_start = 0
+
+        expected_dicts = self.make_assert_dicts(self.events[slice_start:3], self.expectedEventIds[slice_start:3], self.organizationDict['name'])
+        self.assertEqual(len(content), len(expected_dicts), "API failed to return expected number of events")
+        for i in range(0, len(content)):
+            self.assertDictEqual(content[i], expected_dicts[i], "A returned JSON didn't match the expected dict.")
+
+    def make_assert_dicts(self, expected_events, expected_ids, organization_name):
+        self.assertEqual(len(expected_events), len(expected_ids),
+                         "Length of event dictionary list needs to equal length of expected id list. "
+                         "\nLength of expected id: %d\nLength of expected events: %d" % (len(expected_ids),
+                                                                                         len(expected_events)))
+        for i in range(0, len(expected_events)):
+            current_id = expected_ids[i]
+            current_dict = expected_events[i]
+            current_dict['organization'] = organization_name
+            current_dict['id'] = current_id
+        return expected_events
+
+    def make_events(self, events):
+        event_ids = []
+        for e in events:
+            event_ids.append(self.new_event(e))
+        return event_ids
+
+    def new_event(self, event_dict):
+        event_dict['organization'] = Organization.objects.get(id=1)
+        event = Event.objects.create(**event_dict)
+        return event.id
+
+
+class VolunteerEventSignupTest(TestCase, Utilities):
     volunteerDict = {
         "email": "testemail2@gmail.com",
         "password": "testpassword2",
@@ -317,81 +324,6 @@ class VolunteerEventSignupTest(TestCase):
         event_dict['organization'] = Organization.objects.get(id=1)
         event = Event.objects.create(**event_dict)
         return event.id
-
-    def volunteer_signup(self, user_dict, expected=201, msg="Volunteer Signup Failed"):
-        """
-        Test volunteer signup endpoint
-        :param user_dict:   Dictionary of volunteer account info.
-                            Required keys: email, password, first_name, last_name, birthday
-        :param expected:    Expected status code. Default: 201
-        :param msg:     Failure message to use for assertEquals. Default: "Volunteer Signup Failed"
-        """
-        factory = APIRequestFactory()
-        signup_data = json.dumps(user_dict)
-
-        signup_view = VolunteerSignupAPIView.as_view()
-
-        signup_request = factory.post(path="api/signup/volunteer/", data=signup_data, content_type="json")
-        signup_response = signup_view(signup_request)
-        self.assertEqual(signup_response.status_code, expected, msg)
-
-    def volunteer_login(self, user_dict):
-        """
-        Logs in volunteer from user_dict used in volunteer_signup()
-        :param user_dict: user_dict used in volunteer_signup()
-        :return: Dictionary with refresh and access tokens
-        """
-        factory = APIRequestFactory()
-        obtain_token_data = 'email=' + str(user_dict["email"]) + '&password=' + str(user_dict["password"])
-        obtain_token_view = ObtainTokenPairView.as_view()
-
-        obtain_token_request = factory.post(path='api/token/', data=obtain_token_data,
-                                            content_type='application/x-www-form-urlencoded')
-        obtain_token_response = obtain_token_view(obtain_token_request)
-        self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this volunteer.")
-
-        refresh_token = obtain_token_response.data['refresh']
-        access_token = obtain_token_response.data['access']
-
-        return {"refresh": refresh_token, "access": access_token}
-
-    def organization_signup(self, user_dict, expected=201, msg="Organization Signup Failed"):
-        """
-        Test organization signup endpoint
-        :param user_dict:   Dictionary of organization account info.
-                            Required keys:  email, password, name, street_address, city, sate, phone_number,
-                                            organization_motto
-        :param expected: Expected status code. Default: 201
-        :param msg: Failure message to use for assertEquals. Default: "Organization Signup Failed"
-        """
-        factory = APIRequestFactory()
-        signup_data = json.dumps(user_dict)
-
-        signup_view = OrganizationSignupAPIView.as_view()
-
-        signup_request = factory.post(path="api/signup/organization/", data=signup_data, content_type="json")
-        signup_response = signup_view(signup_request)
-        self.assertEqual(signup_response.status_code, expected, msg)
-
-    def organization_login(self, user_dict):
-        """
-        Test organization login endpoint
-        :param user_dict:   Dictionary of organization account info.
-                            Required keys:  email, password
-        :return: Refresh token and access token obtained for this organization
-        """
-        factory = APIRequestFactory()
-        obtain_token_data = 'email=' + str(user_dict['email']) + '&password=' + str(user_dict['password'])
-        obtain_token_view = ObtainTokenPairView.as_view()
-
-        obtain_token_request = factory.post(path='api/token/', data=obtain_token_data,
-                                            content_type='application/x-www-form-urlencoded')
-        obtain_token_response = obtain_token_view(obtain_token_request)
-        self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this organization.")
-
-        refresh_token = obtain_token_response.data['refresh']
-        access_token = obtain_token_response.data['access']
-        return {"refresh": refresh_token, "access": access_token}
 
 
 class OrganizationDashboardTest(TestCase):

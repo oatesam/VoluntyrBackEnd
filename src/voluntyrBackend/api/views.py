@@ -166,7 +166,6 @@ class VolunteerEventsAPIView(generics.ListAPIView):
 
 class OrganizationSignupAPIView(generics.CreateAPIView):
     """
-    TODO: [Frontend] Needs to ensure all fields are provided
     Class View for new organization signups.
     """
     authentication_classes = []
