@@ -327,8 +327,10 @@ class OrganizationEventAPIView(generics.CreateAPIView):
                                              description=body['description'],
                                              organization_id=org_id)
 
-                return Response(status=status.HTTP_201_CREATED)
+                return Response(data={"Success": "Event has been created"},
+                                status=status.HTTP_201_CREATED)
             except IntegrityError:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+                return Response(data={"Error": "Event information is invalid"},
+                                status=status.HTTP_400_BAD_REQUEST)
 
         return AuthCheck.unauthorized_response()
