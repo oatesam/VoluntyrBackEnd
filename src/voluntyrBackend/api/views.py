@@ -334,3 +334,12 @@ class OrganizationEventAPIView(generics.CreateAPIView):
                                 status=status.HTTP_400_BAD_REQUEST)
 
         return AuthCheck.unauthorized_response()
+
+class EventDetailAPIView(generics.UpdateAPIView):
+    """
+    Class View for Organizer to view & edit the Event Details
+    """
+    serializer_class = EventsSerializer
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
