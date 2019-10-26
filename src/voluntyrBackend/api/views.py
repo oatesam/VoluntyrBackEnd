@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer
+    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer
 
 
 class AuthCheck:
@@ -335,11 +335,21 @@ class OrganizationEventAPIView(generics.CreateAPIView):
 
         return AuthCheck.unauthorized_response()
 
-class EventDetailAPIView(generics.UpdateAPIView):
+class EventDetailAPIView(generics.RetrieveUpdateAPIView):
     """
     Class View for Organizer to view & edit the Event Details
     """
-    serializer_class = EventsSerializer
+    serializer_class = OrganizationEventSerializer
 
     def get_object(self):
-        return Event.objects.get(id=self.kwargs['event_id'])
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        organization = Organization.objects.get(end_user_id=user_id)
+        org_id = organization.id
+        event = Event.objects.get(id=self.kwargs['event_id'], organization_id=org_id)
+        return event
+
+    def retrieve(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
+            return super().retrieve(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()

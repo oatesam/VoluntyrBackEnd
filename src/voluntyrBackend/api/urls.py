@@ -20,7 +20,6 @@ urlpatterns = [
     path('events/', SearchEventsAPIView.as_view()),
     path('event/<int:event_id>/volunteer/', VolunteerEventSignupAPIView.as_view()),
     path('organization/event/', OrganizationEventAPIView().as_view()),
-    path('eventDetail/<int:event_id>/', EventDetailAPIView.as_view()),
-    path('eventVolunteers/<int:event_id>/', ),
+    path('organization/event/<int:event_id>/', EventDetailAPIView.as_view())
 ]
 
