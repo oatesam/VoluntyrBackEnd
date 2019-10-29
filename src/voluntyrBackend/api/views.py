@@ -353,7 +353,7 @@ class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
                 message = body['message']
                 emails = self.make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
                 send_mass_mail(emails)
-                return Response(status=status.HTTP_200_OK)
+                return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
             return Response(data={"Unauthorized": "Requesting token does not manage this event."},
                             status=status.HTTP_401_UNAUTHORIZED)
         return AuthCheck.unauthorized_response()
