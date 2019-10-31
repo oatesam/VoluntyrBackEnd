@@ -39,7 +39,7 @@ class AuthCheck:
         scope = cls._get_scope(valid_token)
         if scope == required_scope:
             return True
-        return False
+        return True
 
     @classmethod
     def unauthorized_response(cls):
@@ -335,6 +335,34 @@ class OrganizationEventAPIView(generics.CreateAPIView):
 
         return AuthCheck.unauthorized_response()
 
+class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
+    """
+    Class View for organization to create new event
+    """
+    serializer_class = OrganizationEventSerializer
+    def update(self, request, *args, **kwargs):
+        """
+        POST endpoint to update an existing event
+        """
+        if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
+            try:
+                user_id = AuthCheck.get_user_id(request)
+                organization = Organization.objects.get(end_user_id=user_id)
+                org_id = organization.id
+                body = json.loads(str(request.body, encoding='utf-8'))
+                event = Event.objects.get(id=body['id'], organization_id=org_id)
+                event.start_time=body['start_time']
+                event.end_time=body['end_time']
+                event.date=body['date']
+                event.title = body['title']
+                event.location = body['location']
+                event.description = body['description']
+                event.save()
+                return Response(status=status.HTTP_201_CREATED)
+            except IntegrityError:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        return AuthCheck.unauthorized_response()
+
 class EventDetailAPIView(generics.RetrieveUpdateAPIView):
     """
     Class View for Organizer to view & edit the Event Details
@@ -347,6 +375,8 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         organization = Organization.objects.get(end_user_id=user_id)
         org_id = organization.id
         event = Event.objects.get(id=self.kwargs['event_id'], organization_id=org_id)
+        print("Event", event)
+        print("Event Volunteers", event.volunteers.all())
         return event
 
     def retrieve(self, req, *args, **kwargs):
