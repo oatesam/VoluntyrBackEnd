@@ -1,4 +1,5 @@
 import json
+import time
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -402,8 +403,13 @@ class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
             if organizer.id == event.organization.id:
                 body = json.loads(str(req.body, encoding='utf-8'))
                 volunteer_emails = self.get_volunteer_emails(event)
-                subject = body['subject']
-                message = body['message']
+                eventdate = event.date.strftime("%m/%d/%Y")
+                subject = "You received a message from " + organizer.name + " for their " + event.title + \
+                          " event on " + eventdate
+                message = "Please find their message below: \n\n" + "From: " + organizer.name + "\nSubject: " + body['subject'] + \
+                          "\nMessage: " + body['message'] + "\n\n\n\n---------------------------------------------\n" \
+                          + "This email is not monitored, if you would like to respond to " + organizer.name \
+                          + " about this event, you may email them at " + body['replyto'] + "."
                 emails = self.make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
                 send_mass_mail(emails)
                 return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
