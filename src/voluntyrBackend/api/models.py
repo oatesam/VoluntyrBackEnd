@@ -36,7 +36,7 @@ class Organization(models.Model):
     organization_motto = models.CharField(max_length=200)
 
     # TODO: Add address fields - DONE
-    # TODO: Consider potential useful fields
+    # TODO: Add short name field for emails
 
     def __str__(self):
         return self.name
