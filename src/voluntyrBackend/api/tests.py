@@ -130,28 +130,29 @@ class OrganizationCreateEvent(TestCase, Utilities):
 class EventSearchTest(TestCase, Utilities):
 
     today = datetime.today().day
+    month = datetime.today().month
 
     events = [
         {
-            'start_time': '2019-10-' + str(today) + 'T17:00:00-05:00',
-            'end_time': '2019-10-' + str(today) + 'T18:00:00-05:00',
-            'date': '2019-10-' + str(today),
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T17:00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T18:00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-10-' + str(today + 2) + 'T17:00:00-05:00',
-            'end_time': '2019-10-' + str(today + 2) + 'T18:00:00-05:00',
-            'date': '2019-10-' + str(today + 2),
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)) + 'T17:00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)) + 'T18:00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)),
             'title': 'Second event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-10-' + str(today + 3) + 'T17:00:00-05:00',
-            'end_time': '2019-10-' + str(today + 3) + 'T18:00:00-05:00',
-            'date': '2019-10-' + str(today + 3),
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)) + 'T17:00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)) + 'T18:00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)),
             'title': 'Third event',
             'location': 'IU',
             'description': 'Test event'
@@ -198,13 +199,15 @@ class EventSearchTest(TestCase, Utilities):
         self.assertEqual(status, 200, "Search status was not 200")
 
         time = datetime.time(datetime.today())
-        if time.hour >= 17:
+        if time >= datetime.strptime('17:00:00-0500', '%H:%M:%S%z').time():
             slice_start = 1
         else:
             slice_start = 0
 
         expected_dicts = self.make_assert_dicts(self.events[slice_start:3], self.expectedEventIds[slice_start:3], self.organizationDict['name'])
-        self.assertEqual(len(content), len(expected_dicts), "API failed to return expected number of events")
+        self.assertEqual(len(content), len(expected_dicts),
+                         "API failed to return expected number of events. Returned %d events but expected %d."
+                         % (len(content), len(expected_dicts)))
         for i in range(0, len(content)):
             self.assertDictEqual(content[i], expected_dicts[i], "A returned JSON didn't match the expected dict.")
 
