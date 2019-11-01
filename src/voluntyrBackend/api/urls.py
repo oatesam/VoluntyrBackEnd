@@ -16,10 +16,10 @@ urlpatterns = [
     path('volunteer/events/', VolunteerEventsAPIView.as_view()),
     path('organization/', OrganizationAPIView.as_view()),
     path('organization/events/', OrganizationEventsAPIView.as_view()),
+    path('organization/event/', OrganizationEventAPIView().as_view()),
     path('events/', SearchEventsAPIView.as_view()),
     path('event/<int:event_id>/volunteer/', VolunteerEventSignupAPIView.as_view()),
     path('event/<int:event_id>/email/', OrganizationEmailVolunteers.as_view()),
-    path('organization/event/', OrganizationEventAPIView().as_view()),
     path('organization/event/<int:event_id>/', EventDetailAPIView.as_view()),
     path('organization/updateEvent/', OrganizationEventUpdateAPIView.as_view())
 ]

@@ -90,7 +90,7 @@ class ObtainTokenPairView(TokenObtainPairView):
     serializer_class = ObtainTokenPairSerializer
 
 
-class OrganizationEventsAPIView(generics.ListCreateAPIView):
+class OrganizationEventsAPIView(generics.ListAPIView):
     """
     Class view to get events run by the organization in the requesting JWT
     """
@@ -389,20 +389,20 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-# TODO: tests:
-#               1. Correct organizer request
-#               2. Wrong organizer request
 class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
+    """
+    View to event organizers to email the volunteers which have signed up for a specific event.
+    """
     def create(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             try:
-                event = self.get_event(self.kwargs['event_id'])
+                event = self._get_event(self.kwargs['event_id'])
             except ObjectDoesNotExist:
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
             organizer = Organization.objects.get(end_user__id=AuthCheck.get_user_id(req))
             if organizer.id == event.organization.id:
                 body = json.loads(str(req.body, encoding='utf-8'))
-                volunteer_emails = self.get_volunteer_emails(event)
+                volunteer_emails = self._get_volunteer_emails(event)
                 eventdate = event.date.strftime("%m/%d/%Y")
                 subject = "You received a message from " + organizer.name + " for their " + event.title + \
                           " event on " + eventdate
@@ -410,23 +410,31 @@ class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
                           "\nMessage: " + body['message'] + "\n\n\n\n---------------------------------------------\n" \
                           + "This email is not monitored, if you would like to respond to " + organizer.name \
                           + " about this event, you may email them at " + body['replyto'] + "."
-                emails = self.make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
+                emails = self._make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
                 send_mass_mail(emails)
                 return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
             return Response(data={"Unauthorized": "Requesting token does not manage this event."},
                             status=status.HTTP_401_UNAUTHORIZED)
         return AuthCheck.unauthorized_response()
 
-    def make_emails(self, to_emails, from_email, subject, message):
+    def _make_emails(self, to_emails, from_email, subject, message):
+        """
+        Builds a tuple of the emails to send
+        :param to_emails: List of volunteer emails
+        :param from_email: From email address
+        :param subject: Subject of the emails
+        :param message: Message of the emails
+        :return: Tuple of the emails to send
+        """
         emails = []
         for volunteer in to_emails:
             emails.append((subject, message, from_email, [volunteer]))
         return tuple(emails)
 
-    def get_event(self, event_id):
+    def _get_event(self, event_id):
         return Event.objects.get(id=event_id)
 
-    def get_volunteer_emails(self, event):
+    def _get_volunteer_emails(self, event):
         volunteers = event.volunteers.all()
         emails = []
         for volunteer in volunteers:

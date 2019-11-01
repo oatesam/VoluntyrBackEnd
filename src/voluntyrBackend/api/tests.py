@@ -88,6 +88,173 @@ class Utilities:
         access_token = obtain_token_response.data['access']
         return {"refresh": refresh_token, "access": access_token}
 
+    def organization_new_event(self, token, event_dict):
+        """
+        Utility function to post new events
+        :param token: Access token for the organization
+        :param event_dict: Dictionary of the new event
+        """
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + token})
+        path = "http://testserver/api/organization/event/"
+
+        response = client.post(path, json=event_dict)
+        self.assertEqual(response.status_code, 201, "Utility: Failed to create new event")
+
+    def volunteer_signup_for_event(self, token, event_id):
+        """
+        Utility function for volunteers to signup for events
+        :param token: Volunteer token
+        :param event_id: event id to signup for
+        """
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + token})
+        path = "http://testserver/api/event/%d/volunteer/" % event_id
+
+        response = client.put(path)
+        self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
+
+
+class EventEmailTests(TestCase, Utilities):
+    today = datetime.today().day
+    month = datetime.today().month
+    hour = datetime.today().time().hour
+    eventDicts = [
+        {
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        }
+    ]
+
+    volunteerDict = {
+        "email": "charlie.frank72@gmail.com",
+        "password": "testpassword2",
+        "first_name": "newuser",
+        "last_name": "volunteer",
+        "birthday": "1998-06-12"
+    }
+    volunteerTokens = {}
+
+    organizationDict_real = {
+        "email": "testorgemail10@gmail.com",
+        "password": "testpassword123",
+        "name": "Testing Organization",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens_real = {}
+
+    organizationDict_fake = {
+        "email": "testorgemail20@gmail.com",
+        "password": "testpassword123",
+        "name": "Fake Testing Organization",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens_fake = {}
+
+    def setUp(self):
+        self.volunteer_signup(self.volunteerDict)
+        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
+        self.organization_signup(self.organizationDict_real)
+        self.organizationTokens_real = self.organization_login(self.organizationDict_real)
+
+        self.organization_signup(self.organizationDict_fake)
+        self.organizationTokens_fake = self.organization_login(self.organizationDict_fake)
+
+        self.organization_new_event(self.organizationTokens_real['access'], self.eventDicts[0])
+        self.organization_new_event(self.organizationTokens_real['access'], self.eventDicts[1])
+        self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+    def test_emails(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens_real['access']})
+        path = "http://testserver/api/event/%d/email/" % 1
+
+        email_dict = {
+            'message': 'This is a test email from EventEmailTests.test_emails',
+            'subject': 'Test case email',
+            'replyto': 'testcase@gmail.com'
+        }
+
+        response = client.post(path, json=email_dict)
+        self.assertEqual(response.status_code, 200)
+
+    def test_no_volunteers(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens_real['access']})
+        path = "http://testserver/api/event/%d/email/" % 2
+
+        email_dict = {
+            'message': 'This is a test email from EventEmailTests.test_emails',
+            'subject': 'Test case email',
+            'replyto': 'testcase@gmail.com'
+        }
+
+        response = client.post(path, json=email_dict)
+        self.assertEqual(response.status_code, 200)
+
+    def test_bad_event(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens_real['access']})
+        path = "http://testserver/api/event/%d/email/" % 3
+
+        email_dict = {
+            'message': 'This is a test email from EventEmailTests.test_emails',
+            'subject': 'Test case email',
+            'replyto': 'testcase@gmail.com'
+        }
+
+        response = client.post(path, json=email_dict)
+        self.assertEqual(response.status_code, 400,
+                         "Email was sent for an event which shouldn't exist." if response.status_code == 200
+                         else "Unexpected response code")
+        self.assertDictEqual(json.loads(response.content),
+                             {"Error": "Given event ID does not exist."},
+                             "Email was sent for an event which shouldn't exist." if response.status_code == 200
+                             else "Unexpected response for non existent event id")
+
+    def test_bad_organization(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens_fake['access']})
+        path = "http://testserver/api/event/%d/email/" % 1
+
+        email_dict = {
+            'message': 'This is a test email from EventEmailTests.test_emails',
+            'subject': 'Test case email',
+            'replyto': 'testcase@gmail.com'
+        }
+
+        response = client.post(path, json=email_dict)
+        self.assertEqual(response.status_code, 401,
+                         "Wrong organization was able to send an email" if response.status_code == 200
+                         else "Unexpected response code")
+        self.assertDictEqual(json.loads(response.content),
+                             {"Unauthorized": "Requesting token does not manage this event."},
+                             "Unexpected response for unauthorized organization")
+
+
+
 
 class OrganizationCreateEvent(TestCase, Utilities):
     """
