@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, RequestsClient
@@ -13,6 +13,7 @@ from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSign
 
 
 class Utilities:
+
     def volunteer_signup(self, user_dict, expected=201, msg="Volunteer Signup Failed"):
         """
         Test volunteer signup endpoint
@@ -113,6 +114,94 @@ class Utilities:
 
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
+
+
+class OrganizationEventTests(TestCase, Utilities):
+    tomorrow = datetime.today() + timedelta(days=1)
+
+    volunteerDicts = [
+        {
+            "email": "testemail4@gmail.com",
+            "password": "testpassword2",
+            "first_name": "First user",
+            "last_name": "volunteer",
+            "birthday": "1998-06-12"
+        },
+        {
+            "email": "testemail5@gmail.com",
+            "password": "testpassword2",
+            "first_name": "Second User",
+            "last_name": "volunteer",
+            "birthday": "1998-06-12"
+        },
+        {
+            "email": "testemail6@gmail.com",
+            "password": "testpassword2",
+            "first_name": "Third User",
+            "last_name": "volunteer",
+            "birthday": "1998-06-12"
+        }
+    ]
+    volunteerTokens = []
+
+    organizationDict = {
+        "email": "testorgemail10@gmail.com",
+        "password": "testpassword123",
+        "name": "testOrg1",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens = {}
+
+    eventDict = {
+        'start_time': str(tomorrow.year) + '-' + str(tomorrow.month) + '-' + str(tomorrow.day) + ' 17:00-05:00',
+        'end_time': str(tomorrow.year) + '-' + str(tomorrow.month) + '-' + str(tomorrow.day) + ' 18:00-05:00',
+        'date': str(tomorrow.year) + '-' + str(tomorrow.month) + '-' + str(tomorrow.day),
+        'title': 'Let\'s test',
+        'location': 'IU',
+        'description': 'Test event'
+    }
+    eventId = None
+
+    def setUp(self):
+        for volunteer in self.volunteerDicts:
+            self.volunteer_signup(volunteer)
+            self.volunteerTokens.append(self.volunteer_login(volunteer))
+        self.organization_signup(self.organizationDict)
+        self.organizationTokens = self.organization_login(self.organizationDict)
+        self.eventId = self.new_event(self.eventDict)
+
+    def new_event(self, event_dict):
+        event_dict['organization'] = Organization.objects.get(id=1)
+        event = Event.objects.create(**event_dict)
+        return event.id
+
+    def test_volunteers(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens['access']})
+        path = "http://testserver/api/event/%d/volunteers/" % 1
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(content['number'], 0)
+        self.assertEqual(len(content['volunteers']), 0)
+
+        self.volunteer_signup_for_event(self.volunteerTokens[0]['access'], self.eventId)
+        self.volunteer_signup_for_event(self.volunteerTokens[1]['access'], self.eventId)
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(content['number'], 2)
+        self.assertEqual(content['volunteers'], [{'name': self.volunteerDicts[0]['first_name'] + " " + self.volunteerDicts[0]['last_name']}, {'name': self.volunteerDicts[1]['first_name'] + " " + self.volunteerDicts[1]['last_name']}])
 
 
 class EventEmailTests(TestCase, Utilities):
@@ -252,8 +341,6 @@ class EventEmailTests(TestCase, Utilities):
         self.assertDictEqual(json.loads(response.content),
                              {"Unauthorized": "Requesting token does not manage this event."},
                              "Unexpected response for unauthorized organization")
-
-
 
 
 class OrganizationCreateEvent(TestCase, Utilities):
@@ -403,6 +490,8 @@ class EventSearchTest(TestCase, Utilities):
 
 
 class VolunteerEventSignupTest(TestCase, Utilities):
+    tomorrow = datetime.today() + timedelta(days=1)
+
     volunteerDict = {
         "email": "testemail2@gmail.com",
         "password": "testpassword2",
@@ -425,9 +514,9 @@ class VolunteerEventSignupTest(TestCase, Utilities):
     organizationTokens = {}
 
     eventDict = {
-        'start_time': '2019-10-19 17:00-05:00',
-        'end_time': '2019-10-19 18:00-05:00',
-        'date': '2019-10-19',
+        'start_time': str(tomorrow.year) + '-' + str(tomorrow.month) + '-' + str(tomorrow.day) + ' 17:00-05:00',
+        'end_time': str(tomorrow.year) + '-' + str(tomorrow.month) + '-' + str(tomorrow.day) + ' 18:00-05:00',
+        'date': str(tomorrow.year) + '-' + str(tomorrow.month) + '-' + str(tomorrow.day),
         'title': 'Let\'s test',
         'location': 'IU',
         'description': 'Test event'
@@ -523,6 +612,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         path = "http://testserver/api/volunteer/events/"
 
         data_response = client.get(path)
+        print(data_response.content)
         content = json.loads(data_response.content)
 
         self.assertEqual(len(content), 1)

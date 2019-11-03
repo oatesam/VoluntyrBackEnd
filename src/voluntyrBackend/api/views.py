@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mass_mail
 from django.db import IntegrityError
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -101,7 +102,7 @@ class OrganizationEventsAPIView(generics.ListAPIView):
         user_id = AuthCheck.get_user_id(req)
         organization = Organization.objects.get(end_user_id=user_id)
         org_id = organization.id
-        return Event.objects.filter(organization_id=org_id)
+        return Event.objects.filter(Q(organization_id=org_id) & Q(start_time__gte=timezone.now()))
 
     def list(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
@@ -151,19 +152,23 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
                             status=status.HTTP_409_CONFLICT)
 
 
-class VolunteerEventsAPIView(generics.ListAPIView):
+class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
     """
     Class View for events which a volunteer has signed up for.
     """
     serializer_class = VolunteerEventsSerializer
 
-    # TODO: Scope protect
-
     def get_queryset(self):
         req = self.request
         user_id = AuthCheck.get_user_id(req)
-        volunteer=Volunteer.objects.get(end_user_id=user_id)
-        return Event.objects.filter(volunteers__id=volunteer.id)
+        volunteer = Volunteer.objects.get(end_user_id=user_id)
+        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__gte=timezone.now()))
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        else:
+            return AuthCheck.unauthorized_response()
 
 
 class OrganizationSignupAPIView(generics.CreateAPIView):
@@ -425,4 +430,37 @@ class CheckSignupAPIView(generics.RetrieveAPIView, AuthCheck):
             else:
                 return Response(data={"Signed-up": "false"}, status=status.HTTP_200_OK)
 
+        return AuthCheck.unauthorized_response()
+
+
+class EventVolunteers(generics.ListAPIView, AuthCheck):
+    """
+    Class view for organizations to get a list of volunteers signed up for an event
+    """
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def list(self, req, *args, **kwargs):
+        """
+        Returns dict with the number of volunteers and a list of dictionaries with their names
+        :param req: Request
+        :return: 200 if response successful, 400 if event id doesn't exist, 401 if the token is not correct
+        """
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
+            try:
+                event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            if event.organization != Organization.objects.get(end_user__id=AuthCheck.get_user_id(req)):
+                return Response(data={"Error": "This organization doesn't manage this event."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            volunteers = event.volunteers.all()
+            r_dict = {"number": len(volunteers)}
+
+            names = []
+            for volunteer in volunteers:
+                names.append({"name": volunteer.first_name + " " + volunteer.last_name})
+            r_dict['volunteers'] = names
+            return Response(data=r_dict, status=status.HTTP_200_OK)
         return AuthCheck.unauthorized_response()

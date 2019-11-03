@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     VolunteerEventsAPIView, OrganizationEventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView, OrganizationEventAPIView, \
-    OrganizationEmailVolunteers, CheckSignupAPIView
+    OrganizationEmailVolunteers, CheckSignupAPIView, EventVolunteers
 
 # [Done] TODO: Update frontend organization dashboard to use org/events/
 
@@ -23,5 +23,6 @@ urlpatterns = [
     path('event/<int:event_id>/volunteer/', VolunteerEventSignupAPIView.as_view()),
     path('event/<int:event_id>/email/', OrganizationEmailVolunteers.as_view()),
     path('event/<int:event_id>/check/', CheckSignupAPIView.as_view()),
+    path('event/<int:event_id>/volunteers/', EventVolunteers.as_view())
 ]
 
