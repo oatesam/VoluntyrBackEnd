@@ -2,6 +2,7 @@ import json
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mass_mail
 from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import generics, status
@@ -385,3 +386,43 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             return super().retrieve(req, *args, **kwargs)
         return AuthCheck.unauthorized_response()
+
+
+# TODO: tests:
+#               1. Correct organizer request
+#               2. Wrong organizer request
+class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
+    def create(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
+            try:
+                event = self.get_event(self.kwargs['event_id'])
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            organizer = Organization.objects.get(end_user__id=AuthCheck.get_user_id(req))
+            if organizer.id == event.organization.id:
+                body = json.loads(str(req.body, encoding='utf-8'))
+                volunteer_emails = self.get_volunteer_emails(event)
+                subject = body['subject']
+                message = body['message']
+                emails = self.make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
+                send_mass_mail(emails)
+                return Response(status=status.HTTP_200_OK)
+            return Response(data={"Unauthorized": "Requesting token does not manage this event."},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        return AuthCheck.unauthorized_response()
+
+    def make_emails(self, to_emails, from_email, subject, message):
+        emails = []
+        for volunteer in to_emails:
+            emails.append((subject, message, from_email, [volunteer]))
+        return tuple(emails)
+
+    def get_event(self, event_id):
+        return Event.objects.get(id=event_id)
+
+    def get_volunteer_emails(self, event):
+        volunteers = event.volunteers.all()
+        emails = []
+        for volunteer in volunteers:
+            emails.append(volunteer.end_user.email)
+        return emails
