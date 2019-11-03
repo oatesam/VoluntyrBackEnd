@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer
+    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer
 
 
 class AuthCheck:
@@ -333,4 +333,55 @@ class OrganizationEventAPIView(generics.CreateAPIView):
                 return Response(data={"Error": "Event information is invalid"},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+        return AuthCheck.unauthorized_response()
+
+
+# TODO: 2 classes below should be refactored into a single class
+class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
+    """
+    Class View for organization to update an event
+    """
+    serializer_class = OrganizationEventSerializer
+
+    def update(self, request, *args, **kwargs):
+        """
+        POST endpoint to update an existing event
+        """
+        if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
+            try:
+                user_id = AuthCheck.get_user_id(request)
+                organization = Organization.objects.get(end_user_id=user_id)
+                org_id = organization.id
+                body = json.loads(str(request.body, encoding='utf-8'))
+                event = Event.objects.get(id=body['id'], organization_id=org_id)
+                event.start_time = body['start_time']
+                event.end_time = body['end_time']
+                event.date = body['date']
+                event.title = body['title']
+                event.location = body['location']
+                event.description = body['description']
+                event.save()
+                return Response(status=status.HTTP_201_CREATED)
+            except IntegrityError:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        return AuthCheck.unauthorized_response()
+
+
+class EventDetailAPIView(generics.RetrieveUpdateAPIView):
+    """
+    Class View for Organizer to view & edit the Event Details
+    """
+    serializer_class = OrganizationEventSerializer
+
+    def get_object(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        organization = Organization.objects.get(end_user_id=user_id)
+        org_id = organization.id
+        event = Event.objects.get(id=self.kwargs['event_id'], organization_id=org_id)
+        return event
+
+    def retrieve(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
+            return super().retrieve(req, *args, **kwargs)
         return AuthCheck.unauthorized_response()

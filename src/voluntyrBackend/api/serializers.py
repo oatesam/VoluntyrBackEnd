@@ -91,3 +91,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
 
+class OrganizationEventSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Organization to view and edit the event
+    """
+    class Meta:
+        model = Event
+        fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'volunteers']

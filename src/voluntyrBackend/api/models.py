@@ -1,9 +1,9 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
-
+import datetime
 from .managers import EndUserManager
-
+import pytz
 
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
