@@ -126,6 +126,62 @@ class OrganizationCreateEvent(TestCase, Utilities):
         create_event_response = client.post(path, json=newEvent)
         self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
 
+class OrganizationEditEvent(TestCase, Utilities):
+    """
+    Test the endpoint to edit event
+    """
+    def test_create_event(self):
+        print("In OrganizationEditEvent test_create_event")
+        organization_dict = {
+            "email": "testmail@gmail.com",
+            "password": "testpassword123",
+            "name": "testOrg",
+            "street_address": "700 N, Woodlawn Lane",
+            "city": "Bloomington",
+            "state": "Indiana",
+            "phone_number": "1-812-253-9111",
+            "organization_motto": "Org Motto"
+        }
+        Utilities.organization_signup(self, organization_dict)
+        tokens = Utilities.organization_login(self, organization_dict)
+        self.create_event(tokens['access'])
+
+    def create_event(self, access_token, expected=201):
+        print("In OrganizationEditEvent create_event")
+        newEvent = {
+            "id": 1,
+            "start_time": "2019-10-25 12:00:00-05:00",
+            "end_time": "2019-10-25 13:00:00-05:00",
+            "date": "2019-10-25",
+            "title": "testevent",
+            "location": "testlocation",
+            "description": "testing endpoint"
+        }
+
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/organization/event/"
+
+        create_event_response = client.post(path, json=newEvent)
+        print(create_event_response)
+        self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
+        self.edit_event(access_token, newEvent)
+
+    def edit_event(self, access_token, newEvent, expected=201):
+        print("In OrganizationEditEvent edit_event")
+        editDetails = {
+            "description": "testdescription"
+        }
+        newEvent.update(editDetails)
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/organization/updateEvent/"
+        create_event_response = client.put(path, json=newEvent)
+        print(create_event_response)
+        path = "http://testserver/api/organization/event/1/"
+        create_event_response = client.get(path)
+        print(create_event_response)
+        self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
 
 class EventSearchTest(TestCase, Utilities):
 
