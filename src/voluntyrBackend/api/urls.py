@@ -8,7 +8,6 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
 
 # [Done] TODO: Update frontend organization dashboard to use org/events/
 
-
 urlpatterns = [
     path('token/', ObtainTokenPairView.as_view()),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
