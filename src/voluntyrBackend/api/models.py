@@ -66,6 +66,8 @@ class Event(models.Model):
     volunteers = models.ManyToManyField(Volunteer, blank=True)
 
     # TODO: Consider potential useful fields
+    class Meta:
+        ordering = ['date', 'start_time']
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
