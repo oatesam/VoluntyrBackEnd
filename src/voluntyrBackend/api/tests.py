@@ -481,6 +481,18 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         self.assertEqual(status, 200, msg="Signup check failed.")
         self.assertDictEqual(content, {"Signed-up": "true"}, msg="Volunteer should be signed up.")
 
+    def test_check_bad_event_signup(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/check/" % (self.eventId + 1)
+
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        status = data_response.status_code
+
+        self.assertEqual(status, 400)
+        self.assertDictEqual(content, {"Error": "Given event ID does not exist."})
+
 
     def test_volunteer_event_signup_organizer_token(self):
         client = RequestsClient()
