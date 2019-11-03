@@ -665,6 +665,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         path = "http://testserver/api/volunteer/events/"
 
         data_response = client.get(path)
+        print(data_response.content)
         content = json.loads(data_response.content)
 
         self.assertEqual(len(content), 1)
