@@ -36,7 +36,7 @@ class Organization(models.Model):
     organization_motto = models.CharField(max_length=200)
 
     # TODO: Add address fields - DONE
-    # TODO: Consider potential useful fields
+    # TODO: Add short name field for emails
 
     def __str__(self):
         return self.name
@@ -66,6 +66,8 @@ class Event(models.Model):
     volunteers = models.ManyToManyField(Volunteer, blank=True)
 
     # TODO: Consider potential useful fields
+    class Meta:
+        ordering = ['date', 'start_time']
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)

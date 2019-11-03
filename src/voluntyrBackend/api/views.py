@@ -1,8 +1,11 @@
 import json
+import time
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mass_mail
 from django.db import IntegrityError
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -88,7 +91,7 @@ class ObtainTokenPairView(TokenObtainPairView):
     serializer_class = ObtainTokenPairSerializer
 
 
-class OrganizationEventsAPIView(generics.ListCreateAPIView):
+class OrganizationEventsAPIView(generics.ListAPIView):
     """
     Class view to get events run by the organization in the requesting JWT
     """
@@ -99,7 +102,7 @@ class OrganizationEventsAPIView(generics.ListCreateAPIView):
         user_id = AuthCheck.get_user_id(req)
         organization = Organization.objects.get(end_user_id=user_id)
         org_id = organization.id
-        return Event.objects.filter(organization_id=org_id)
+        return Event.objects.filter(Q(organization_id=org_id) & Q(start_time__gte=timezone.now()))
 
     def list(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
@@ -149,19 +152,23 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
                             status=status.HTTP_409_CONFLICT)
 
 
-class VolunteerEventsAPIView(generics.ListAPIView):
+class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
     """
     Class View for events which a volunteer has signed up for.
     """
     serializer_class = VolunteerEventsSerializer
 
-    # TODO: Scope protect
-
     def get_queryset(self):
         req = self.request
         user_id = AuthCheck.get_user_id(req)
-        volunteer=Volunteer.objects.get(end_user_id=user_id)
-        return Event.objects.filter(volunteers__id=volunteer.id)
+        volunteer = Volunteer.objects.get(end_user_id=user_id)
+        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__gte=timezone.now()))
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        else:
+            return AuthCheck.unauthorized_response()
 
 
 class OrganizationSignupAPIView(generics.CreateAPIView):
@@ -280,7 +287,7 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
 
     def put(self, req, *args, **kwargs):
         """
-        Endpoint to add volunteer to requesting event
+        Endpoint to add or removed a volunteer to an event
         :param req: Request
         :return:    Returns status 400 if the event doesn't exist,
                     or status 202 if the volunteer was successfully signed up.
@@ -294,11 +301,16 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                 current_event = self.get_object()
             except ObjectDoesNotExist:
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
-            current_event.volunteers.add(vol_id)
-            current_event.save()
-            return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
-                            status=status.HTTP_202_ACCEPTED)
+            if volunteer in current_event.volunteers.all():
+                current_event.volunteers.remove(vol_id)
+                current_event.save()
+                return Response(data={"Success": "Volunteer has been removed from event %s" % self.kwargs['event_id']},
+                                status=status.HTTP_202_ACCEPTED)
+            else:
+                current_event.volunteers.add(vol_id)
+                current_event.save()
+                return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
+                                status=status.HTTP_202_ACCEPTED)
 
         return AuthCheck.unauthorized_response()
 
@@ -384,4 +396,122 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
     def retrieve(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             return super().retrieve(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()
+
+
+class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
+    """
+    View to event organizers to email the volunteers which have signed up for a specific event.
+    """
+    def create(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
+            try:
+                event = self._get_event(self.kwargs['event_id'])
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            organizer = Organization.objects.get(end_user__id=AuthCheck.get_user_id(req))
+            if organizer.id == event.organization.id:
+                body = json.loads(str(req.body, encoding='utf-8'))
+                volunteer_emails = self._get_volunteer_emails(event)
+                eventdate = event.date.strftime("%m/%d/%Y")
+                subject = "You received a message from " + organizer.name + " for their " + event.title + \
+                          " event on " + eventdate
+                message = "Please find their message below: \n\n" + "From: " + organizer.name + "\nSubject: " + body['subject'] + \
+                          "\nMessage: " + body['message'] + "\n\n\n\n---------------------------------------------\n" \
+                          + "This email is not monitored, if you would like to respond to " + organizer.name \
+                          + " about this event, you may email them at " + body['replyto'] + "."
+                emails = self._make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
+                send_mass_mail(emails)
+                return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
+            return Response(data={"Unauthorized": "Requesting token does not manage this event."},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        return AuthCheck.unauthorized_response()
+
+    def _make_emails(self, to_emails, from_email, subject, message):
+        """
+        Builds a tuple of the emails to send
+        :param to_emails: List of volunteer emails
+        :param from_email: From email address
+        :param subject: Subject of the emails
+        :param message: Message of the emails
+        :return: Tuple of the emails to send
+        """
+        emails = []
+        for volunteer in to_emails:
+            emails.append((subject, message, from_email, [volunteer]))
+        return tuple(emails)
+
+    def _get_event(self, event_id):
+        return Event.objects.get(id=event_id)
+
+    def _get_volunteer_emails(self, event):
+        volunteers = event.volunteers.all()
+        emails = []
+        for volunteer in volunteers:
+            emails.append(volunteer.end_user.email)
+        return emails
+
+
+class CheckSignupAPIView(generics.RetrieveAPIView, AuthCheck):
+    """
+    Class view to check if a volunteer has signed up for an event
+    """
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def retrieve(self, req, *args, **kwargs):
+        """
+        Endpoint to check if a volunteer has signed up for an event.
+        :param req: request
+        :param args:
+        :param kwargs: Needs to contain event_id
+        :return: 200 if check Okay, and true iff the volunteer is signed up
+        """
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            user_id = AuthCheck.get_user_id(req)
+            volunteer = Volunteer.objects.get(end_user_id=user_id)
+
+            try:
+                current_event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if volunteer in current_event.volunteers.all():
+                return Response(data={"Signed-up": "true"}, status=status.HTTP_200_OK)
+            else:
+                return Response(data={"Signed-up": "false"}, status=status.HTTP_200_OK)
+
+        return AuthCheck.unauthorized_response()
+
+
+class EventVolunteers(generics.ListAPIView, AuthCheck):
+    """
+    Class view for organizations to get a list of volunteers signed up for an event
+    """
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def list(self, req, *args, **kwargs):
+        """
+        Returns dict with the number of volunteers and a list of dictionaries with their names
+        :param req: Request
+        :return: 200 if response successful, 400 if event id doesn't exist, 401 if the token is not correct
+        """
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
+            try:
+                event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            if event.organization != Organization.objects.get(end_user__id=AuthCheck.get_user_id(req)):
+                return Response(data={"Error": "This organization doesn't manage this event."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            volunteers = event.volunteers.all()
+            r_dict = {"number": len(volunteers)}
+
+            names = []
+            for volunteer in volunteers:
+                names.append({"name": volunteer.first_name + " " + volunteer.last_name})
+            r_dict['volunteers'] = names
+            return Response(data=r_dict, status=status.HTTP_200_OK)
         return AuthCheck.unauthorized_response()
