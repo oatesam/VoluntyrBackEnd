@@ -126,12 +126,12 @@ class OrganizationCreateEvent(TestCase, Utilities):
         create_event_response = client.post(path, json=newEvent)
         self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
 
+
 class OrganizationEditEvent(TestCase, Utilities):
     """
     Test the endpoint to edit event
     """
     def test_create_event(self):
-        print("In OrganizationEditEvent test_create_event")
         organization_dict = {
             "email": "testmail@gmail.com",
             "password": "testpassword123",
@@ -147,7 +147,6 @@ class OrganizationEditEvent(TestCase, Utilities):
         self.create_event(tokens['access'])
 
     def create_event(self, access_token, expected=201):
-        print("In OrganizationEditEvent create_event")
         newEvent = {
             "id": 1,
             "start_time": "2019-10-25 12:00:00-05:00",
@@ -163,12 +162,10 @@ class OrganizationEditEvent(TestCase, Utilities):
         path = "http://testserver/api/organization/event/"
 
         create_event_response = client.post(path, json=newEvent)
-        print(create_event_response)
-        self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
+        self.assertEqual(create_event_response.status_code, expected, msg="Failed to create event")
         self.edit_event(access_token, newEvent)
 
-    def edit_event(self, access_token, newEvent, expected=201):
-        print("In OrganizationEditEvent edit_event")
+    def edit_event(self, access_token, newEvent):
         editDetails = {
             "description": "testdescription"
         }
@@ -177,11 +174,11 @@ class OrganizationEditEvent(TestCase, Utilities):
         client.headers.update({'Authorization': 'Bearer ' + access_token})
         path = "http://testserver/api/organization/updateEvent/"
         create_event_response = client.put(path, json=newEvent)
-        print(create_event_response)
+        self.assertEqual(create_event_response.status_code, 201, msg="Failed to edit event")
         path = "http://testserver/api/organization/event/1/"
         create_event_response = client.get(path)
-        print(create_event_response)
-        self.assertEqual(create_event_response.status_code, expected, msg=create_event_response.content)
+        self.assertEqual(create_event_response.status_code, 200, msg="Failed to get edited event")
+
 
 class EventSearchTest(TestCase, Utilities):
 
@@ -347,7 +344,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         path = "http://testserver/api/event/%d/volunteer/" % self.eventId
 
         data_response = client.put(path)
-        content = json.loads(data_response.content)
+        # content = json.loads(data_response.content)
         status = data_response.status_code
 
         self.assertEqual(status, 401, msg="Organization was able to sig nup for an event")

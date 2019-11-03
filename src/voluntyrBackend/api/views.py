@@ -39,7 +39,7 @@ class AuthCheck:
         scope = cls._get_scope(valid_token)
         if scope == required_scope:
             return True
-        return True
+        return False
 
     @classmethod
     def unauthorized_response(cls):
@@ -335,11 +335,14 @@ class OrganizationEventAPIView(generics.CreateAPIView):
 
         return AuthCheck.unauthorized_response()
 
+
+# TODO: 2 classes below should be refactored into a single class
 class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
     """
-    Class View for organization to create new event
+    Class View for organization to update an event
     """
     serializer_class = OrganizationEventSerializer
+
     def update(self, request, *args, **kwargs):
         """
         POST endpoint to update an existing event
@@ -351,9 +354,9 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
                 org_id = organization.id
                 body = json.loads(str(request.body, encoding='utf-8'))
                 event = Event.objects.get(id=body['id'], organization_id=org_id)
-                event.start_time=body['start_time']
-                event.end_time=body['end_time']
-                event.date=body['date']
+                event.start_time = body['start_time']
+                event.end_time = body['end_time']
+                event.date = body['date']
                 event.title = body['title']
                 event.location = body['location']
                 event.description = body['description']
@@ -362,6 +365,7 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
         return AuthCheck.unauthorized_response()
+
 
 class EventDetailAPIView(generics.RetrieveUpdateAPIView):
     """
@@ -375,10 +379,6 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         organization = Organization.objects.get(end_user_id=user_id)
         org_id = organization.id
         event = Event.objects.get(id=self.kwargs['event_id'], organization_id=org_id)
-        print("Event", event)
-        print("Event Start Time", event.start_time)
-        print("Event End Time", event.end_time)
-        print("Event Volunteers", event.volunteers.all())
         return event
 
     def retrieve(self, req, *args, **kwargs):

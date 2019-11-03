@@ -56,8 +56,8 @@ class Volunteer(models.Model):
 
 
 class Event(models.Model):
-    start_time = models.DateTimeField(default=timezone.now)
-    end_time = models.DateTimeField(default=timezone.now)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
     date = models.DateField()
     title = models.CharField(max_length=100)
     location = models.CharField(max_length=200)
