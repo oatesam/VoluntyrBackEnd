@@ -376,6 +376,8 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         org_id = organization.id
         event = Event.objects.get(id=self.kwargs['event_id'], organization_id=org_id)
         print("Event", event)
+        print("Event Start Time", event.start_time)
+        print("Event End Time", event.end_time)
         print("Event Volunteers", event.volunteers.all())
         return event
 

@@ -1,9 +1,9 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
-
+import datetime
 from .managers import EndUserManager
-
+import pytz
 
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
@@ -56,8 +56,8 @@ class Volunteer(models.Model):
 
 
 class Event(models.Model):
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
+    start_time = models.DateTimeField(default=timezone.now)
+    end_time = models.DateTimeField(default=timezone.now)
     date = models.DateField()
     title = models.CharField(max_length=100)
     location = models.CharField(max_length=200)
