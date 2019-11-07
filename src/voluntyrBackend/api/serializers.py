@@ -91,6 +91,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
 
+
 class OrganizationEventSerializer(serializers.ModelSerializer):
     """
     Serializer for Organization to view and edit the event
@@ -98,3 +99,11 @@ class OrganizationEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'volunteers']
+
+
+class OrganizationVolunteerSerializer(serializers.ModelSerializer):
+    end_user = EndUserSerializer(many=False)
+
+    class Meta:
+        model = Organization
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'end_user']

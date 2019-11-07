@@ -14,7 +14,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer
+    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, OrganizationVolunteerSerializer
 
 
 class AuthCheck:
@@ -325,7 +325,7 @@ class OrganizationEventAPIView(generics.CreateAPIView):
         """
         POST endpoint to create new event
         Receives JSON in body
-        :return 200 upon successful creation
+        :return 201 upon successful creation
         """
         if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             try:
@@ -514,4 +514,24 @@ class EventVolunteers(generics.ListAPIView, AuthCheck):
                 names.append({"name": volunteer.first_name + " " + volunteer.last_name})
             r_dict['volunteers'] = names
             return Response(data=r_dict, status=status.HTTP_200_OK)
+        return AuthCheck.unauthorized_response()
+
+
+class OrganizationVolunteerAPIView(generics.ListAPIView, AuthCheck):
+
+    serializer_class = OrganizationVolunteerSerializer
+
+    def get_object(self):
+        return Organization.objects.get(id=self.kwargs['org_id'])
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            try:
+                org = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Organization with the given Id does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            data = {'organization': OrganizationVolunteerSerializer(org).data}
+            events = Event.objects.filter(Q(organization_id=org.id) & Q(start_time__gte=timezone.now()))
+            data['events'] = EventsSerializer(events, many=True).data
+            return Response(data=data, status=status.HTTP_200_OK)
         return AuthCheck.unauthorized_response()
