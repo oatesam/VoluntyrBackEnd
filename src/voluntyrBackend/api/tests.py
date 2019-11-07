@@ -224,6 +224,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
+            "phone_number": "1-800-000-0000",
             "organization_motto": "The motto"
         }
         self.assertDictEqual(expected, actual, "Organization dictionary didn't match expected")
@@ -647,7 +648,7 @@ class EventSearchTest(TestCase, Utilities):
         for i in range(0, len(expected_events)):
             current_id = expected_ids[i]
             current_dict = expected_events[i]
-            current_dict['organization'] = organization_name
+            current_dict['organization'] = {"id": 1, "name": organization_name}
             current_dict['id'] = current_id
         return expected_events
 

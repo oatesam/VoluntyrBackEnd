@@ -14,7 +14,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer
+    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
+    VolunteerSearchEventsSerializer
 
 
 class AuthCheck:
@@ -265,7 +266,7 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
     Class view for returning a list of events which haven't happened yet.
     """
 
-    serializer_class = VolunteerEventsSerializer
+    serializer_class = VolunteerSearchEventsSerializer
 
     def get_queryset(self):
         return Event.objects.filter(start_time__gte=timezone.now())
