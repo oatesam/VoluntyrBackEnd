@@ -518,6 +518,9 @@ class EventVolunteers(generics.ListAPIView, AuthCheck):
 
 
 class OrganizationVolunteerAPIView(generics.ListAPIView, AuthCheck):
+    """
+    Class view for volunteers to view organizations
+    """
 
     serializer_class = OrganizationVolunteerSerializer
 
@@ -525,11 +528,16 @@ class OrganizationVolunteerAPIView(generics.ListAPIView, AuthCheck):
         return Organization.objects.get(id=self.kwargs['org_id'])
 
     def list(self, req, *args, **kwargs):
+        """
+        Returns organization in the path's details and upcoming events
+        :param req:
+        """
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
             try:
                 org = self.get_object()
             except ObjectDoesNotExist:
-                return Response(data={"Error": "Organization with the given Id does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(data={"Error": "Organization with the given Id does not exist."},
+                                status=status.HTTP_400_BAD_REQUEST)
             data = {'organization': OrganizationVolunteerSerializer(org).data}
             events = Event.objects.filter(Q(organization_id=org.id) & Q(start_time__gte=timezone.now()))
             data['events'] = EventsSerializer(events, many=True).data

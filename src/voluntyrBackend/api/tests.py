@@ -100,7 +100,7 @@ class Utilities:
         path = "http://testserver/api/organization/event/"
 
         response = client.post(path, json=event_dict)
-        self.assertEqual(response.status_code, 201, "Utility: Failed to create new event")
+        self.assertEqual(response.status_code, 201, "Utility: Failed to create new event.\n\n" + str(event_dict))
 
     def volunteer_signup_for_event(self, token, event_id):
         """
@@ -116,7 +116,10 @@ class Utilities:
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
 
 
-class OrganzationVolunteerPageTests(TestCase, Utilities):
+class VolunteerOrganizationPageTests(TestCase, Utilities):
+    """
+    Tests for the Volunteer Organization view
+    """
     today = datetime.today().day
     month = datetime.today().month
     hour = datetime.today().time().hour
@@ -177,7 +180,7 @@ class OrganzationVolunteerPageTests(TestCase, Utilities):
 
     def test_volunteer_organization(self):
         client = RequestsClient()
-        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens['access']})
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
         path = "http://testserver/api/organization/%d/" % 1
 
         response = client.get(path)
@@ -187,6 +190,30 @@ class OrganzationVolunteerPageTests(TestCase, Utilities):
         self.assertEqual(status, 200, "Received unexpected status code")
         self.checkOrgDict(content['organization'])
         self.checkEventsDict(content['events'], self.eventDicts)
+
+    def test_bad_org(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/organization/%d/" % 2
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Received unexpected status code")
+        self.assertDictEqual(content, {"Error": "Organization with the given Id does not exist."})
+
+    def test_view_with_org_token(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens['access']})
+        path = "http://testserver/api/organization/%d/" % 2
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 401, "Received unexpected status code")
+        self.assertDictEqual(content, {"error": "Invalid token provided. Token lacks required scope."})
 
     def checkOrgDict(self, actual):
         expected = {
