@@ -5,7 +5,7 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     VolunteerEventsAPIView, OrganizationEventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView, OrganizationEventAPIView, \
     OrganizationEmailVolunteers, CheckSignupAPIView, EventVolunteers, EventDetailAPIView, \
-    OrganizationEventUpdateAPIView, OrganizationVolunteerAPIView
+    OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView
 
 # [Done] TODO: Update frontend organization dashboard to use org/events/
 
@@ -18,7 +18,7 @@ urlpatterns = [
     path('volunteer/', VolunteerAPIView.as_view()),
     path('volunteer/events/', VolunteerEventsAPIView.as_view()),
     path('organization/', OrganizationAPIView.as_view()),
-    path('organization/<int:org_id>/', OrganizationVolunteerAPIView.as_view()),
+    path('organization/<int:org_id>/', VolunteerOrganizationAPIView.as_view()),
     path('organization/events/', OrganizationEventsAPIView.as_view()),
     path('organization/event/', OrganizationEventAPIView().as_view()),
     path('events/', SearchEventsAPIView.as_view()),

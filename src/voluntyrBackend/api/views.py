@@ -14,7 +14,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, OrganizationVolunteerSerializer
+    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer
 
 
 class AuthCheck:
@@ -517,12 +517,12 @@ class EventVolunteers(generics.ListAPIView, AuthCheck):
         return AuthCheck.unauthorized_response()
 
 
-class OrganizationVolunteerAPIView(generics.ListAPIView, AuthCheck):
+class VolunteerOrganizationAPIView(generics.ListAPIView, AuthCheck):
     """
     Class view for volunteers to view organizations
     """
 
-    serializer_class = OrganizationVolunteerSerializer
+    serializer_class = VolunteerOrganizationSerializer
 
     def get_object(self):
         return Organization.objects.get(id=self.kwargs['org_id'])
@@ -538,7 +538,7 @@ class OrganizationVolunteerAPIView(generics.ListAPIView, AuthCheck):
             except ObjectDoesNotExist:
                 return Response(data={"Error": "Organization with the given Id does not exist."},
                                 status=status.HTTP_400_BAD_REQUEST)
-            data = {'organization': OrganizationVolunteerSerializer(org).data}
+            data = {'organization': VolunteerOrganizationSerializer(org).data}
             events = Event.objects.filter(Q(organization_id=org.id) & Q(start_time__gte=timezone.now()))
             data['events'] = EventsSerializer(events, many=True).data
             return Response(data=data, status=status.HTTP_200_OK)

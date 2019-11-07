@@ -101,7 +101,7 @@ class OrganizationEventSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'volunteers']
 
 
-class OrganizationVolunteerSerializer(serializers.ModelSerializer):
+class VolunteerOrganizationSerializer(serializers.ModelSerializer):
     end_user = EndUserSerializer(many=False)
 
     class Meta:
