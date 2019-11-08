@@ -14,7 +14,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer
+    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
+    SearchEventsSerializer
 
 
 class AuthCheck:
@@ -95,7 +96,7 @@ class OrganizationEventsAPIView(generics.ListAPIView):
     """
     Class view to get events run by the organization in the requesting JWT
     """
-    serializer_class = EventsSerializer
+    serializer_class = SearchEventsSerializer
 
     def get_queryset(self):
         req = self.request
@@ -156,7 +157,7 @@ class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
     """
     Class View for events which a volunteer has signed up for.
     """
-    serializer_class = VolunteerEventsSerializer
+    serializer_class = SearchEventsSerializer
 
     def get_queryset(self):
         req = self.request
@@ -265,7 +266,7 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
     Class view for returning a list of events which haven't happened yet.
     """
 
-    serializer_class = VolunteerEventsSerializer
+    serializer_class = SearchEventsSerializer
 
     def get_queryset(self):
         return Event.objects.filter(start_time__gte=timezone.now())
@@ -325,7 +326,7 @@ class OrganizationEventAPIView(generics.CreateAPIView):
         """
         POST endpoint to create new event
         Receives JSON in body
-        :return 200 upon successful creation
+        :return 201 upon successful creation
         """
         if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             try:
@@ -514,4 +515,32 @@ class EventVolunteers(generics.ListAPIView, AuthCheck):
                 names.append({"name": volunteer.first_name + " " + volunteer.last_name})
             r_dict['volunteers'] = names
             return Response(data=r_dict, status=status.HTTP_200_OK)
+        return AuthCheck.unauthorized_response()
+
+
+class VolunteerOrganizationAPIView(generics.ListAPIView, AuthCheck):
+    """
+    Class view for volunteers to view organizations
+    """
+
+    serializer_class = VolunteerOrganizationSerializer
+
+    def get_object(self):
+        return Organization.objects.get(id=self.kwargs['org_id'])
+
+    def list(self, req, *args, **kwargs):
+        """
+        Returns organization in the path's details and upcoming events
+        :param req:
+        """
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            try:
+                org = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Organization with the given Id does not exist."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            data = {'organization': VolunteerOrganizationSerializer(org).data}
+            events = Event.objects.filter(Q(organization_id=org.id) & Q(start_time__gte=timezone.now()))
+            data['events'] = EventsSerializer(events, many=True).data
+            return Response(data=data, status=status.HTTP_200_OK)
         return AuthCheck.unauthorized_response()

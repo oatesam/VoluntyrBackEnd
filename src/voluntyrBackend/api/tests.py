@@ -100,7 +100,7 @@ class Utilities:
         path = "http://testserver/api/organization/event/"
 
         response = client.post(path, json=event_dict)
-        self.assertEqual(response.status_code, 201, "Utility: Failed to create new event")
+        self.assertEqual(response.status_code, 201, "Utility: Failed to create new event.\n\n" + str(event_dict))
 
     def volunteer_signup_for_event(self, token, event_id):
         """
@@ -114,6 +114,128 @@ class Utilities:
 
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
+
+
+class VolunteerOrganizationPageTests(TestCase, Utilities):
+    """
+    Tests for the Volunteer Organization view
+    """
+    today = datetime.today().day
+    month = datetime.today().month
+    hour = datetime.today().time().hour
+    eventDicts = [
+        {
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        }
+    ]
+
+    volunteerDict = {
+        "email": "charlie.frank72@gmail.com",
+        "password": "testpassword2",
+        "first_name": "newuser",
+        "last_name": "volunteer",
+        "birthday": "1998-06-12"
+    }
+    volunteerTokens = {}
+
+    organizationDict = {
+        "email": "testorgemail20@gmail.com",
+        "password": "testpassword123",
+        "name": "Testing Organization",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens = {}
+
+    def setUp(self):
+        self.volunteer_signup(self.volunteerDict)
+        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
+        self.organization_signup(self.organizationDict)
+        self.organizationTokens = self.organization_login(self.organizationDict)
+
+        self.organization_new_event(self.organizationTokens['access'], self.eventDicts[0])
+        self.organization_new_event(self.organizationTokens['access'], self.eventDicts[1])
+
+    def test_volunteer_organization(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/organization/%d/" % 1
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200, "Received unexpected status code")
+        self.checkOrgDict(content['organization'])
+        self.checkEventsDict(content['events'], self.eventDicts)
+
+    def test_bad_org(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/organization/%d/" % 2
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Received unexpected status code")
+        self.assertDictEqual(content, {"Error": "Organization with the given Id does not exist."})
+
+    def test_view_with_org_token(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens['access']})
+        path = "http://testserver/api/organization/%d/" % 2
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 401, "Received unexpected status code")
+        self.assertDictEqual(content, {"error": "Invalid token provided. Token lacks required scope."})
+
+    def checkOrgDict(self, actual):
+        expected = {
+            "end_user": {
+                "email": "testorgemail20@gmail.com"
+            },
+            "name": "Testing Organization",
+            "street_address": "1 IU st",
+            "city": "Bloomington",
+            "state": "Indiana",
+            "phone_number": "1-800-000-0000",
+            "organization_motto": "The motto"
+        }
+        self.assertDictEqual(expected, actual, "Organization dictionary didn't match expected")
+
+    def checkEventsDict(self, actual, expected):
+        for i in range(0, len(expected)):
+            a = actual[i]
+            e = expected[i]
+            e['id'] = i + 1
+            e['organization'] = 1
+            self.assertDictEqual(e, a, "Event dict did not match expected")
 
 
 class OrganizationEventTests(TestCase, Utilities):
@@ -526,7 +648,7 @@ class EventSearchTest(TestCase, Utilities):
         for i in range(0, len(expected_events)):
             current_id = expected_ids[i]
             current_dict = expected_events[i]
-            current_dict['organization'] = organization_name
+            current_dict['organization'] = {"id": 1, "name": organization_name}
             current_dict['id'] = current_id
         return expected_events
 

@@ -82,6 +82,27 @@ class VolunteerEventsSerializer(serializers.ModelSerializer):
     organization = serializers.StringRelatedField()
 
 
+class VolunteerSearchOrganizationHelperSerializer(serializers.ModelSerializer):
+    """
+    Helper serializer to add organization's name and id to SearchEventsSerializer
+    """
+    class Meta:
+        model = Organization
+        fields = ['id', 'name']
+
+
+class SearchEventsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for events presented to volunteers. Shows details meant only for volunteers.
+    """
+
+    class Meta:
+        model = Event
+        fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'organization']
+
+    organization = VolunteerSearchOrganizationHelperSerializer(many=False)
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     """
     Serializer for organization information for app - organization dashboard
@@ -91,6 +112,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
 
+
 class OrganizationEventSerializer(serializers.ModelSerializer):
     """
     Serializer for Organization to view and edit the event
@@ -98,3 +120,14 @@ class OrganizationEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = ['id', 'title', 'start_time', 'end_time', 'date', 'location', 'description', 'volunteers']
+
+
+class VolunteerOrganizationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for volunteer's to see organization details
+    """
+    class Meta:
+        model = Organization
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'end_user']
+
+    end_user = EndUserSerializer(many=False)
