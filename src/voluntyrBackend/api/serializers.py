@@ -84,14 +84,14 @@ class VolunteerEventsSerializer(serializers.ModelSerializer):
 
 class VolunteerSearchOrganizationHelperSerializer(serializers.ModelSerializer):
     """
-    Helper serializer to add organization's name and id to VolunteerSearchEventsSerializer
+    Helper serializer to add organization's name and id to SearchEventsSerializer
     """
     class Meta:
         model = Organization
         fields = ['id', 'name']
 
 
-class VolunteerSearchEventsSerializer(serializers.ModelSerializer):
+class SearchEventsSerializer(serializers.ModelSerializer):
     """
     Serializer for events presented to volunteers. Shows details meant only for volunteers.
     """
