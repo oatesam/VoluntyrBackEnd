@@ -398,6 +398,7 @@ class EventEmailTests(TestCase, Utilities):
         self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
 
     def test_emails(self):
+        # FIXME: assert email message
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens_real['access']})
         path = "http://testserver/api/event/%d/email/" % 1
@@ -639,6 +640,18 @@ class EventSearchTest(TestCase, Utilities):
                          % (len(content), len(expected_dicts)))
         for i in range(0, len(content)):
             self.assertDictEqual(content[i], expected_dicts[i], "A returned JSON didn't match the expected dict.")
+            self.get_single_event(content[i]['id'], content[i])
+
+    def get_single_event(self, event_id, expected):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/volunteer/event/"
+
+        data_response = client.get(path + str(event_id) + "/")
+        content = json.loads(data_response.content)
+        status = data_response.status_code
+        self.assertEqual(status, 200, "Single event status wasn't 200. Got this instead: " + str(status))
+        self.assertDictEqual(content, expected, "Actual dict didn't match the expected dict.")
 
     def make_assert_dicts(self, expected_events, expected_ids, organization_name):
         self.assertEqual(len(expected_events), len(expected_ids),

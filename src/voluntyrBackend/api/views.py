@@ -153,6 +153,22 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
                             status=status.HTTP_409_CONFLICT)
 
 
+# TODO: Write tests to get single event, add to search event tests
+class VolunteerEventAPIView(generics.RetrieveAPIView, AuthCheck):
+    """
+    Class view to return a single events to volunteers
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def retrieve(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().retrieve(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()
+
+
 class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
     """
     Class View for events which a volunteer has signed up for.
