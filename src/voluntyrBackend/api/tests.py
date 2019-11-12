@@ -620,8 +620,8 @@ class EventSearchTest(TestCase, Utilities):
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
         path = "http://testserver/api/events/"
-
         data_response = client.get(path)
+        print(data_response)
         content = json.loads(data_response.content)
         status = data_response.status_code
 

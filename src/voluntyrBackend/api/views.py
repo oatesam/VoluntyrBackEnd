@@ -19,8 +19,8 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
 
 
 class AuthCheck:
-    #TODO add getVolunteerID
-    #TODO add getOrganizationID
+    # TODO add getVolunteerID
+    # TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
@@ -264,12 +264,26 @@ class VolunteerAPIView(generics.RetrieveAPIView):
 class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
     """
     Class view for returning a list of events which haven't happened yet.
+    Filter events based on the url params
+    url params: start_time, end_time
     """
 
     serializer_class = SearchEventsSerializer
 
     def get_queryset(self):
-        return Event.objects.filter(start_time__gte=timezone.now())
+        """
+        default return events that hasn't happend yet
+        check filter before final default return
+        """
+        queryset = Event.objects.all()
+        start_time = self.request.query_params.get('start_time', None)
+        end_time = self.request.query_params.get('end_time', None)
+        if start_time is not None:
+            queryset.filter(start_time__gte=start_time)
+        if end_time is not None:
+            queryset.filter(end_time__lte=end_time)
+
+        return queryset.filter(start_time__gte=timezone.now())
 
     def list(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
@@ -404,6 +418,7 @@ class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
     """
     View to event organizers to email the volunteers which have signed up for a specific event.
     """
+
     def create(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             try:
@@ -417,7 +432,8 @@ class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
                 eventdate = event.date.strftime("%m/%d/%Y")
                 subject = "You received a message from " + organizer.name + " for their " + event.title + \
                           " event on " + eventdate
-                message = "Please find their message below: \n\n" + "From: " + organizer.name + "\nSubject: " + body['subject'] + \
+                message = "Please find their message below: \n\n" + "From: " + organizer.name + "\nSubject: " + body[
+                    'subject'] + \
                           "\nMessage: " + body['message'] + "\n\n\n\n---------------------------------------------\n" \
                           + "This email is not monitored, if you would like to respond to " + organizer.name \
                           + " about this event, you may email them at " + body['replyto'] + "."
@@ -457,6 +473,7 @@ class CheckSignupAPIView(generics.RetrieveAPIView, AuthCheck):
     """
     Class view to check if a volunteer has signed up for an event
     """
+
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 
@@ -489,6 +506,7 @@ class EventVolunteers(generics.ListAPIView, AuthCheck):
     """
     Class view for organizations to get a list of volunteers signed up for an event
     """
+
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 
