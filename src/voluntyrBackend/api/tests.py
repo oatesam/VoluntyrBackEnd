@@ -8,6 +8,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .models import Event, Organization
 from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
 
+from .urlTokens.token import URLToken
 
 # TODO: test for double signup of events
 
@@ -114,6 +115,35 @@ class Utilities:
 
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
+
+
+class URLTokenTests(TestCase):
+    def test_token(self):
+        expected_data = {"event_id": 1}
+        token = URLToken(data=expected_data)
+        self.assertTrue(token.is_valid(), "First token isn't valid")
+        self.assertDictEqual(token.get_data(), expected_data, "Actual data didn't match expected data")
+        self.assertRegex(token.get_token(), "\S*_\S*")
+        token1 = URLToken(token=token.get_token())
+        self.assertTrue(token1.is_valid(), "Second token isn't valid")
+        self.assertDictEqual(token1.get_data(), expected_data, "Actual data didn't match expected data")
+
+    def test_bad_signature(self):
+        expected_data = {"event_id": 1}
+        token = URLToken(data=expected_data)
+        token1 = URLToken(token=token.get_token()[2:])
+        self.assertFalse(token1.is_valid(), "Token should not be valid")
+        try:
+            token1.get_data()
+            self.fail("Should raise exception")
+        except Exception:
+            pass
+
+    def test_bad_data(self):
+        expected_data = {"event_id": 1}
+        token = URLToken(data=expected_data)
+        token1 = URLToken(token=token.get_token()[:-2])
+        self.assertFalse(token1.is_valid(), "Token should not be valid")
 
 
 class VolunteerOrganizationPageTests(TestCase, Utilities):
@@ -1156,3 +1186,4 @@ class SignupLoginTest(TestCase):
         email_response = email_view(email_request)
 
         self.assertEqual(email_response.status_code, expected, msg)
+

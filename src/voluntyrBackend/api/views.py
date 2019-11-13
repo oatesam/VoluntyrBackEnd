@@ -365,7 +365,7 @@ class OrganizationEventAPIView(generics.CreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-# TODO: 2 classes below should be refactored into a single class
+# Refactor: 2 classes below should be refactored into a single class
 class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
     """
     Class View for organization to update an event
@@ -414,6 +414,32 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             return super().retrieve(req, *args, **kwargs)
         return AuthCheck.unauthorized_response()
+
+
+class InviteVolunteersAPIView(generics.GenericAPIView):
+    """
+    View to generate an invite code for an event. GET will return an invite code for this event and POST will email
+    then provided emails a link to signup for this event
+    """
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def get(self, req, *args, **kwargs):
+        try:
+            event = self.get_object()
+        except ObjectDoesNotExist:
+            return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, req, *args, **kwargs):
+        try:
+            event = self.get_object()
+        except ObjectDoesNotExist:
+            return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+    def _generate_invite_code(self):
+        # Add setting for invite code expiration time
+        # Look at planning in my email 
+        pass
 
 
 class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
