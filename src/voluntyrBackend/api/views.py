@@ -425,20 +425,42 @@ class InviteVolunteersAPIView(generics.GenericAPIView):
         return Event.objects.get(id=self.kwargs['event_id'])
 
     def get(self, req, *args, **kwargs):
+        """
+        Returns the invite code for this invite, expiring in 1 day by default. Method for both orgs and volunteers
+        """
         try:
             event = self.get_object()
         except ObjectDoesNotExist:
             return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+        # Data for token: {"event_id": event.id}
+        return Response(data={"Error": "Not implemented yet"}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
     def post(self, req, *args, **kwargs):
-        try:
-            event = self.get_object()
-        except ObjectDoesNotExist:
-            return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+        """
+        Returns the invite code for this invite as well as emailing the invite to the emails provided in the body with
+        key "emails"
+
+        Restricted to volunteers which are signed up only
+        """
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            try:
+                event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+            volunteer = Volunteer.objects.get(end_user__id=AuthCheck.get_user_id(req))
+            if volunteer in event.volunteers.all():
+                # Send emails here
+                return Response(data={"Error": "Not implemented yet"}, status=status.HTTP_501_NOT_IMPLEMENTED)
+            else:
+                return Response(data={"Error": "This volunteer is not signed up for this event, therefore they cannot "
+                                               "send an email invite to others."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return AuthCheck.unauthorized_response()
 
     def _generate_invite_code(self):
         # Add setting for invite code expiration time
-        # Look at planning in my email 
+        # Look at planning in my email
         pass
 
 

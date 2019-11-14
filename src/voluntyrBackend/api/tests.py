@@ -117,6 +117,92 @@ class Utilities:
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
 
 
+class InviteTests(TestCase, Utilities):
+    today = datetime.today().day
+    month = datetime.today().month
+    hour = datetime.today().time().hour
+    eventDicts = [
+        {
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        }
+    ]
+
+    volunteerDict = {
+        "email": "testemail99@gmail.com",
+        "password": "testpassword2",
+        "first_name": "newuser",
+        "last_name": "volunteer",
+        "birthday": "1998-06-12"
+    }
+    volunteerTokens = {}
+
+    organizationDict = {
+        "email": "testorgemail20@gmail.com",
+        "password": "testpassword123",
+        "name": "Testing Organization",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens = {}
+
+    def setUp(self):
+        self.volunteer_signup(self.volunteerDict)
+        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
+        self.organization_signup(self.organizationDict)
+        self.organizationTokens = self.organization_login(self.organizationDict)
+
+        self.organization_new_event(self.organizationTokens['access'], self.eventDicts[0])
+        self.organization_new_event(self.organizationTokens['access'], self.eventDicts[1])
+
+    def test_send_emails(self):
+        self.fail("Sending email invites not implemented yet")
+
+    def test_GET_token(self):
+        for i in range(0, len(self.eventDicts)):
+            self._test_GET_helper(i + 1)
+
+    def _test_GET_helper(self, event_id):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/invite/" % event_id
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200, "Response code wasn't 200")
+        self.assertEqual(self._get_event_from_URLToken(content['invite_code']), event_id)
+
+
+    def _get_event_from_URLToken(self, code):
+        token = URLToken(token=code)
+        data = token.get_data()
+        return int(data['event_id'])
+
+
+
 class URLTokenTests(TestCase):
     def test_token(self):
         expected_data = {"event_id": 1}
