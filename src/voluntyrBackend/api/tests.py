@@ -183,6 +183,18 @@ class InviteTests(TestCase, Utilities):
         for i in range(0, len(self.eventDicts)):
             self._test_GET_helper(i + 1)
 
+    def test_GET_bad_event(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/invite/" % 5
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Event should not exist")
+        self.assertDictEqual(content, {"Error": "Given event ID does not exist."})
+
     def _test_GET_helper(self, event_id):
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
@@ -194,7 +206,6 @@ class InviteTests(TestCase, Utilities):
 
         self.assertEqual(status, 200, "Response code wasn't 200")
         self.assertEqual(self._get_event_from_URLToken(content['invite_code']), event_id)
-
 
     def _get_event_from_URLToken(self, code):
         token = URLToken(token=code)
