@@ -179,6 +179,9 @@ class InviteTests(TestCase, Utilities):
     def test_send_emails(self):
         self.fail("Sending email invites not implemented yet")
 
+    def test_accept_invite(self):
+        self.fail("Invite acceptance not implemented yet")
+
     def test_GET_token(self):
         for i in range(0, len(self.eventDicts)):
             self._test_GET_helper(i + 1)

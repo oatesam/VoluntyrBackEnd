@@ -1,5 +1,6 @@
 from .token import URLToken
 
+
 class TokenConverter:
     regex = '\S*_\S*'
 

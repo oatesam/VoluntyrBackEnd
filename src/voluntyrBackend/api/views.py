@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from src.voluntyrBackend.api.urlTokens.token import URLToken
+from .urlTokens.token import URLToken
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
     EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
@@ -415,6 +415,13 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             return super().retrieve(req, *args, **kwargs)
         return AuthCheck.unauthorized_response()
+
+
+class InviteAPIView(generics.GenericAPIView, AuthCheck):
+    """
+    View to processes event invites
+    TODO: Story-59; accept invites
+    """
 
 
 class InviteVolunteersAPIView(generics.GenericAPIView):

@@ -5,9 +5,9 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     VolunteerEventsAPIView, OrganizationEventsAPIView, ObtainTokenPairView, OrganizationAPIView, VolunteerAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView, OrganizationEventAPIView, \
     OrganizationEmailVolunteers, CheckSignupAPIView, EventVolunteers, EventDetailAPIView, \
-    OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView, VolunteerEventAPIView, InviteVolunteersAPIView
+    OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView, VolunteerEventAPIView, InviteVolunteersAPIView, \
+    InviteAPIView
 
-# [Done] TODO: Update frontend organization dashboard to use org/events/
 
 urlpatterns = [
     path('token/', ObtainTokenPairView.as_view()),
@@ -28,7 +28,7 @@ urlpatterns = [
     path('event/<int:event_id>/check/', CheckSignupAPIView.as_view()),
     path('event/<int:event_id>/volunteers/', EventVolunteers.as_view()),
     path('event/<int:event_id>/invite/', InviteVolunteersAPIView.as_view()),
-    # path('invite/<url_key:invite_code>/', InviteAPIView.as_view()),
+    # path('invite/<url_key:invite_code>/', InviteAPIView.as_view()),  # TODO: Story-59; use URLToken Converter
     path('organization/event/<int:event_id>/', EventDetailAPIView.as_view()),
     path('organization/updateEvent/', OrganizationEventUpdateAPIView.as_view()),
 ]
