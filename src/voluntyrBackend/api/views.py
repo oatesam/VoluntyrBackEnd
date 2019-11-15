@@ -417,6 +417,16 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         return AuthCheck.unauthorized_response()
 
 
+class EventAPIView(generics.RetrieveAPIView):
+    """
+    Readonly view for a single event
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+
 class InviteAPIView(generics.GenericAPIView, AuthCheck):
     """
     View to processes event invites

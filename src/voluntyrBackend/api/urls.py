@@ -6,7 +6,7 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView, OrganizationEventAPIView, \
     OrganizationEmailVolunteers, CheckSignupAPIView, EventVolunteers, EventDetailAPIView, \
     OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView, VolunteerEventAPIView, InviteVolunteersAPIView, \
-    InviteAPIView
+    InviteAPIView, EventAPIView
 
 
 urlpatterns = [
@@ -25,6 +25,7 @@ urlpatterns = [
     path('events/', SearchEventsAPIView.as_view()),
     path('event/<int:event_id>/volunteer/', VolunteerEventSignupAPIView.as_view()),
     path('event/<int:event_id>/email/', OrganizationEmailVolunteers.as_view()),
+    path('event/<int:event_id>/', EventAPIView.as_view()),
     path('event/<int:event_id>/check/', CheckSignupAPIView.as_view()),
     path('event/<int:event_id>/volunteers/', EventVolunteers.as_view()),
     path('event/<int:event_id>/invite/', InviteVolunteersAPIView.as_view()),
