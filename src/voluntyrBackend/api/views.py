@@ -1,5 +1,4 @@
 import json
-import time
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -12,11 +11,11 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .urlTokens.token import URLToken
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
+    EndUserSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
     SearchEventsSerializer
+from .urlTokens.token import URLToken
 
 
 class AuthCheck:

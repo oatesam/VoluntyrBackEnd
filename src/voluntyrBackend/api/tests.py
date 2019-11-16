@@ -197,6 +197,39 @@ class InviteTests(TestCase, Utilities):
             self.assertEqual(status, 200, "Response code wasn't 200")
             self.assertDictEqual(content, {"event": i})
 
+    def test_bad_invite(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/invite/" % 1
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200, "Response code wasn't 200")
+        path = "http://testserver/api/invite/%s/" % (content['invite_code'][:-2])
+
+        response = client.get(path)
+        status = response.status_code
+        self.assertNotEqual(status, 500, "There was an internal server error.")
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Invite should be invalid")
+        self.assertDictEqual(content, {"Error": "The provided token is invalid."})
+
+    def test_expired_invite(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/invite/%s/" % URLToken(data={"event_id": 1}, lifetime=timedelta(milliseconds=1)).get_token()
+
+        response = client.get(path)
+        status = response.status_code
+        self.assertNotEqual(status, 500, "There was an internal server error.")
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Invite should be invalid")
+        self.assertDictEqual(content, {"Error": "The provided token is invalid."})
 
     def test_GET_token(self):
         for i in range(0, len(self.eventDicts)):
