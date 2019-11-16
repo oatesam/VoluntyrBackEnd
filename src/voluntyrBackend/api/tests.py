@@ -8,6 +8,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .models import Event, Organization
 from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
 
+from .urlTokens.token import URLToken
 
 # TODO: test for double signup of events
 
@@ -114,6 +115,184 @@ class Utilities:
 
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
+
+
+class InviteTests(TestCase, Utilities):
+    today = datetime.today().day
+    month = datetime.today().month
+    hour = datetime.today().time().hour
+    eventDicts = [
+        {
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 1) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+                hour + 2) + ':00:00-05:00',
+            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        }
+    ]
+
+    volunteerDict = {
+        "email": "testemail99@gmail.com",
+        "password": "testpassword2",
+        "first_name": "newuser",
+        "last_name": "volunteer",
+        "birthday": "1998-06-12"
+    }
+    volunteerTokens = {}
+
+    organizationDict = {
+        "email": "testorgemail20@gmail.com",
+        "password": "testpassword123",
+        "name": "Testing Organization",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "1-800-000-0000",
+        "organization_motto": "The motto"
+    }
+    organizationTokens = {}
+
+    def setUp(self):
+        self.volunteer_signup(self.volunteerDict)
+        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
+        self.organization_signup(self.organizationDict)
+        self.organizationTokens = self.organization_login(self.organizationDict)
+
+        self.organization_new_event(self.organizationTokens['access'], self.eventDicts[0])
+        self.organization_new_event(self.organizationTokens['access'], self.eventDicts[1])
+
+    def test_accept_invite(self):
+        for i in range(1, len(self.eventDicts) + 1):
+            client = RequestsClient()
+            client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+            path = "http://testserver/api/event/%d/invite/" % i
+
+            response = client.get(path)
+            status = response.status_code
+            content = json.loads(response.content)
+
+            self.assertEqual(status, 200, "Response code wasn't 200")
+            path = "http://testserver/api/invite/%s/" % content['invite_code']
+
+            response = client.get(path)
+            status = response.status_code
+            self.assertNotEqual(status, 500, "There was an internal server error.")
+            content = json.loads(response.content)
+
+            self.assertEqual(status, 200, "Response code wasn't 200")
+            self.assertDictEqual(content, {"event": i})
+
+    def test_bad_invite(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/invite/" % 1
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200, "Response code wasn't 200")
+        path = "http://testserver/api/invite/%s/" % (content['invite_code'][:-2])
+
+        response = client.get(path)
+        status = response.status_code
+        self.assertNotEqual(status, 500, "There was an internal server error.")
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Invite should be invalid")
+        self.assertDictEqual(content, {"Error": "The provided token is invalid."})
+
+    def test_expired_invite(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/invite/%s/" % URLToken(data={"event_id": 1}, lifetime=timedelta(milliseconds=1)).get_token()
+
+        response = client.get(path)
+        status = response.status_code
+        self.assertNotEqual(status, 500, "There was an internal server error.")
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Invite should be invalid")
+        self.assertDictEqual(content, {"Error": "The provided token is invalid."})
+
+    def test_GET_token(self):
+        for i in range(0, len(self.eventDicts)):
+            self._test_GET_helper(i + 1)
+
+    def test_GET_bad_event(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/invite/" % 5
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 400, "Event should not exist")
+        self.assertDictEqual(content, {"Error": "Given event ID does not exist."})
+
+    def _test_GET_helper(self, event_id):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/event/%d/invite/" % event_id
+
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200, "Response code wasn't 200")
+        self.assertEqual(self._get_event_from_URLToken(content['invite_code']), event_id)
+
+    def _get_event_from_URLToken(self, code):
+        token = URLToken(token=code)
+        data = token.get_data()
+        return int(data['event_id'])
+
+
+
+class URLTokenTests(TestCase):
+    def test_token(self):
+        expected_data = {"event_id": 1}
+        token = URLToken(data=expected_data)
+        self.assertTrue(token.is_valid(), "First token isn't valid")
+        self.assertDictEqual(token.get_data(), expected_data, "Actual data didn't match expected data")
+        self.assertRegex(token.get_token(), "\S*_\S*")
+        token1 = URLToken(token=token.get_token())
+        self.assertTrue(token1.is_valid(), "Second token isn't valid")
+        self.assertDictEqual(token1.get_data(), expected_data, "Actual data didn't match expected data")
+
+    def test_bad_signature(self):
+        expected_data = {"event_id": 1}
+        token = URLToken(data=expected_data)
+        token1 = URLToken(token=token.get_token()[2:])
+        self.assertFalse(token1.is_valid(), "Token should not be valid")
+        try:
+            token1.get_data()
+            self.fail("Should raise exception")
+        except Exception:
+            pass
+
+    def test_bad_data(self):
+        expected_data = {"event_id": 1}
+        token = URLToken(data=expected_data)
+        token1 = URLToken(token=token.get_token()[:-2])
+        self.assertFalse(token1.is_valid(), "Token should not be valid")
 
 
 class VolunteerOrganizationPageTests(TestCase, Utilities):
@@ -398,6 +577,7 @@ class EventEmailTests(TestCase, Utilities):
         self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
 
     def test_emails(self):
+        # FIXME: assert email message
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens_real['access']})
         path = "http://testserver/api/event/%d/email/" % 1
@@ -639,6 +819,18 @@ class EventSearchTest(TestCase, Utilities):
                          % (len(content), len(expected_dicts)))
         for i in range(0, len(content)):
             self.assertDictEqual(content[i], expected_dicts[i], "A returned JSON didn't match the expected dict.")
+            self.get_single_event(content[i]['id'], content[i])
+
+    def get_single_event(self, event_id, expected):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/volunteer/event/"
+
+        data_response = client.get(path + str(event_id) + "/")
+        content = json.loads(data_response.content)
+        status = data_response.status_code
+        self.assertEqual(status, 200, "Single event status wasn't 200. Got this instead: " + str(status))
+        self.assertDictEqual(content, expected, "Actual dict didn't match the expected dict.")
 
     def make_assert_dicts(self, expected_events, expected_ids, organization_name):
         self.assertEqual(len(expected_events), len(expected_ids),
@@ -1143,3 +1335,4 @@ class SignupLoginTest(TestCase):
         email_response = email_view(email_request)
 
         self.assertEqual(email_response.status_code, expected, msg)
+

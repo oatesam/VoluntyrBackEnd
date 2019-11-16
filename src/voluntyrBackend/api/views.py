@@ -1,5 +1,4 @@
 import json
-import time
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -14,8 +13,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Event, Organization, Volunteer, EndUser
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
-    EndUserSerializer, VolunteerEventsSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
+    EndUserSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
     SearchEventsSerializer
+from .urlTokens.token import URLToken
 
 
 class AuthCheck:
@@ -151,6 +151,22 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
         except IntegrityError:
             return Response(data={"error": "Volunteer with this email already exists."},
                             status=status.HTTP_409_CONFLICT)
+
+
+# TODO: Write tests to get single event, add to search event tests
+class VolunteerEventAPIView(generics.RetrieveAPIView, AuthCheck):
+    """
+    Class view to return a single events to volunteers
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def retrieve(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().retrieve(req, *args, **kwargs)
+        return AuthCheck.unauthorized_response()
 
 
 class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
@@ -349,7 +365,7 @@ class OrganizationEventAPIView(generics.CreateAPIView):
         return AuthCheck.unauthorized_response()
 
 
-# TODO: 2 classes below should be refactored into a single class
+# Refactor: 2 classes below should be refactored into a single class
 class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
     """
     Class View for organization to update an event
@@ -398,6 +414,57 @@ class EventDetailAPIView(generics.RetrieveUpdateAPIView):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Organization']):
             return super().retrieve(req, *args, **kwargs)
         return AuthCheck.unauthorized_response()
+
+
+class EventAPIView(generics.RetrieveAPIView):
+    """
+    Readonly view for a single event
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+
+class InviteAPIView(generics.GenericAPIView, AuthCheck):
+    """
+    View to processes event invites; Returns status 400 if the code is invalid or status 200 and the event_id from the
+    invite code
+    """
+
+    def get(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            invite = self.kwargs['invite_code']
+            if invite.is_valid():
+                event_id = invite.get_data()['event_id']
+                return Response(data={"event": event_id}, status=status.HTTP_200_OK)
+            return Response(data={"Error": "The provided token is invalid."}, status=status.HTTP_400_BAD_REQUEST)
+        return AuthCheck.unauthorized_response()
+
+
+class InviteVolunteersAPIView(generics.GenericAPIView):
+    """
+    View to generate an invite code for an event. GET will return an invite code for this event and POST will email
+    the provided emails a link to signup for this event
+    """
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def get(self, req, *args, **kwargs):
+        """
+        Returns the invite code for this invite, expiring in 1 day by default. Method for both Orgs and Volunteers
+        """
+        try:
+            event = self.get_object()
+        except ObjectDoesNotExist:
+            return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        invite_code = self._generate_invite_code(event.id)
+        return Response(data={"invite_code": invite_code}, status=status.HTTP_200_OK)
+
+    def _generate_invite_code(self, event_id):
+        token = URLToken(data={"event_id": event_id})
+        return token.get_token()
 
 
 class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
