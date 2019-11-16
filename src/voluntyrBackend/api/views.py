@@ -294,11 +294,23 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
         queryset = Event.objects.all()
         start_time = self.request.query_params.get('start_time', None)
         end_time = self.request.query_params.get('end_time', None)
+        title = self.request.query_params.get('title', None)
+        keyword = self.request.query_params.get('keyword', None)
+        location = self.request.query_params.get('location', None)
+        org_name = self.request.query_params.get('orgName', None)
         if start_time is not None:
-            queryset.filter(start_time__gte=start_time)
+            queryset = queryset.filter(start_time__gte=start_time)
         if end_time is not None:
-            queryset.filter(end_time__lte=end_time)
-
+            queryset = queryset.filter(end_time__lte=end_time)
+        if title is not None:
+            queryset = queryset.filter(title__contains=title)
+        if keyword is not None:
+            queryset = queryset.filter(description__contains=keyword)
+        if location is not None:
+            queryset = queryset.filter(location__contains=location)
+        if org_name is not None:
+            org_id = Organization.objects.get(name=org_name)
+            queryset = queryset.filter(organization_id=org_id)
         return queryset.filter(start_time__gte=timezone.now())
 
     def list(self, req, *args, **kwargs):
