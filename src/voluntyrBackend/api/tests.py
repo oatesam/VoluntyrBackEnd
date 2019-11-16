@@ -176,11 +176,27 @@ class InviteTests(TestCase, Utilities):
         self.organization_new_event(self.organizationTokens['access'], self.eventDicts[0])
         self.organization_new_event(self.organizationTokens['access'], self.eventDicts[1])
 
-    def test_send_emails(self):
-        self.fail("Sending email invites not implemented yet")
-
     def test_accept_invite(self):
-        self.fail("Invite acceptance not implemented yet")
+        for i in range(1, len(self.eventDicts) + 1):
+            client = RequestsClient()
+            client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+            path = "http://testserver/api/event/%d/invite/" % i
+
+            response = client.get(path)
+            status = response.status_code
+            content = json.loads(response.content)
+
+            self.assertEqual(status, 200, "Response code wasn't 200")
+            path = "http://testserver/api/invite/%s/" % content['invite_code']
+
+            response = client.get(path)
+            status = response.status_code
+            self.assertNotEqual(status, 500, "There was an internal server error.")
+            content = json.loads(response.content)
+
+            self.assertEqual(status, 200, "Response code wasn't 200")
+            self.assertDictEqual(content, {"event": i})
+
 
     def test_GET_token(self):
         for i in range(0, len(self.eventDicts)):

@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, register_converter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
@@ -8,6 +8,9 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView, VolunteerEventAPIView, InviteVolunteersAPIView, \
     InviteAPIView, EventAPIView
 
+from .urlTokens.converter import TokenConverter
+
+register_converter(TokenConverter, "url_token")
 
 urlpatterns = [
     path('token/', ObtainTokenPairView.as_view()),
@@ -29,7 +32,7 @@ urlpatterns = [
     path('event/<int:event_id>/check/', CheckSignupAPIView.as_view()),
     path('event/<int:event_id>/volunteers/', EventVolunteers.as_view()),
     path('event/<int:event_id>/invite/', InviteVolunteersAPIView.as_view()),
-    # path('invite/<url_key:invite_code>/', InviteAPIView.as_view()),  # TODO: Story-59; use URLToken Converter
+    path('invite/<url_token:invite_code>/', InviteAPIView.as_view()),
     path('organization/event/<int:event_id>/', EventDetailAPIView.as_view()),
     path('organization/updateEvent/', OrganizationEventUpdateAPIView.as_view()),
 ]

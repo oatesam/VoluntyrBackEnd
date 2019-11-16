@@ -429,9 +429,18 @@ class EventAPIView(generics.RetrieveAPIView):
 
 class InviteAPIView(generics.GenericAPIView, AuthCheck):
     """
-    View to processes event invites
-    TODO: Story-59; accept invites
+    View to processes event invites; Returns status 400 if the code is invalid or status 200 and the event_id from the
+    invite code
     """
+
+    def get(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            invite = self.kwargs['invite_code']
+            if invite.is_valid():
+                event_id = invite.get_data()['event_id']
+                return Response(data={"event": event_id}, status=status.HTTP_200_OK)
+            return Response(data={"Error": "The provided token is invalid."}, status=status.HTTP_400_BAD_REQUEST)
+        return AuthCheck.unauthorized_response()
 
 
 class InviteVolunteersAPIView(generics.GenericAPIView):
@@ -454,62 +463,9 @@ class InviteVolunteersAPIView(generics.GenericAPIView):
         invite_code = self._generate_invite_code(event.id)
         return Response(data={"invite_code": invite_code}, status=status.HTTP_200_OK)
 
-    def post(self, req, *args, **kwargs):
-        """
-        Returns the invite code for this invite as well as emailing the invite to the emails provided in the body with
-        key "emails"
-
-        Restricted to volunteers which are signed up only
-
-        TODO: Story-59; Tests
-        - Proper request; check emails
-        - Volunteer not registered
-        - Organization request
-        """
-        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
-            try:
-                event = self.get_object()
-            except ObjectDoesNotExist:
-                return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
-            volunteer = Volunteer.objects.get(end_user__id=AuthCheck.get_user_id(req))
-            if volunteer in event.volunteers.all():
-                invite_code = self._generate_invite_code(event.id)
-                volunteer_name = volunteer.get_full_name()
-
-                emails = req.data['emails']
-                subject = "You have been invited to an event by " + volunteer_name
-                message = "Who? %s\nWhat? %s\nWhere? %s\nWhen? %s to %s\n\nTo view more about this event, " \
-                          "or to register to attend, go to voluntyr.com/invite and enter the following code: %s" \
-                          % (event.organization.name, event.title, event.location, event.start_time, event.end_time,
-                             invite_code)
-
-                emails = self._make_emails(emails, settings.DEFAULT_FROM_EMAIL, subject, message)
-                send_mass_mail(emails)
-                return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
-            else:
-                return Response(data={"Error": "This volunteer is not signed up for this event, therefore they cannot "
-                                               "send an email invite to others."}, status=status.HTTP_400_BAD_REQUEST)
-
-        return AuthCheck.unauthorized_response()
-
     def _generate_invite_code(self, event_id):
         token = URLToken(data={"event_id": event_id})
         return token.get_token()
-
-    def _make_emails(self, to_emails, from_email, subject, message):
-        """
-        Builds a tuple of the emails to send
-        :param to_emails: List of volunteer emails
-        :param from_email: From email address
-        :param subject: Subject of the emails
-        :param message: Message of the emails
-        :return: Tuple of the emails to send
-        """
-        emails = []
-        for volunteer in to_emails:
-            emails.append((subject, message, from_email, [volunteer]))
-        return tuple(emails)
 
 
 class OrganizationEmailVolunteers(generics.CreateAPIView, AuthCheck):
