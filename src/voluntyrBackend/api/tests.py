@@ -151,6 +151,7 @@ class InviteTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}

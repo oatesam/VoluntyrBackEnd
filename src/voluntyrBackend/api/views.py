@@ -98,24 +98,30 @@ class ObtainTokenPairView(TokenObtainPairView):
 
 
 
-class ObtainDualAuthView(generics.CreateAPIView):
+class ObtainDualAuthView(generics.GenericAPIView):
     """
     Class View for user to obtain Dual Authentication Token
     """
     serializer_class = ObtainDualAuthSerializer
 
-    def validate_dual_token(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         """
         Validates the token provided in the
         POST request body.
         :return: Status 200 if the token is valid and 400 if invalid
         """
+        body = json.loads(str(request.body, encoding='utf-8'))
+
         user_id = AuthCheck.get_user_id(self.request)
-        end_user = EndUser.objects.get(email=user_id)
+        end_user = EndUser.objects.get(id=user_id)
         authy_id = end_user.authy_id
 
         verification = authy_api.tokens.verify(authy_id, token=body['token'])
-        return verification
+
+        if verification.ok():
+            return Response(data={'verified': 'true'}, status=status.HTTP_200_OK)
+        else:
+            return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
 
 class OrganizationEventsAPIView(generics.ListAPIView):
     """
