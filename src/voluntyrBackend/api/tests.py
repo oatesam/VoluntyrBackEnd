@@ -1,13 +1,18 @@
 import json
+import sys
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock
 
+from authy.api import AuthyApiClient
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
+from .models import Event, Organization, EndUser
+from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, \
+    ObtainDualAuthView
+from django.conf import settings
 
-from .models import Event, Organization
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
-
+authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 from .urlTokens.token import URLToken
 
 # TODO: test for double signup of events
@@ -151,6 +156,7 @@ class InviteTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "1-800-000-0000",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -332,6 +338,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -426,6 +433,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "First user",
             "last_name": "volunteer",
+            "phone_number": "765-426-3669",
             "birthday": "1998-06-12"
         },
         {
@@ -433,6 +441,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "Second User",
             "last_name": "volunteer",
+            "phone_number": "765-426-3669",
             "birthday": "1998-06-12"
         },
         {
@@ -440,6 +449,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "Third User",
             "last_name": "volunteer",
+            "phone_number": "765-426-3669",
             "birthday": "1998-06-12"
         }
     ]
@@ -537,6 +547,7 @@ class EventEmailTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -775,6 +786,7 @@ class EventSearchTest(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -907,6 +919,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -1069,6 +1082,7 @@ class VolunteerDashboardTest(TestCase):
                    "password": "testpassword2",
                    "first_name": "newuser",
                    "last_name": "volunteer",
+                    "phone_number": "765-426-3669",
                    "birthday": "1998-06-12"}
 
     def test_volunteer_account_info(self):
@@ -1083,7 +1097,7 @@ class VolunteerDashboardTest(TestCase):
         """
         Test volunteer signup endpoint
         :param newUserDict:   Dictionary of volunteer account info.
-                            Required keys: email, password, first_name, last_name, birthday
+                            Required keys: email, password, first_name, last_name, phone_number, birthday
         :param expected:    Expected status code. Default: 201
         :param msg:     Failure message to use for assertEquals. Default: "Volunteer Signup Failed"
         """
@@ -1132,6 +1146,93 @@ class VolunteerDashboardTest(TestCase):
         userdict.pop('password', None)
 
         self.assertDictEqual(userdict, content)
+
+
+class DualAuthTest(TestCase, Utilities):
+    """
+    Test Dual Authentication
+    """
+
+    newUserDict = {"email": "testemail2@gmail.com",
+                   "password": "testpassword2",
+                   "first_name": "newuser",
+                   "last_name": "volunteer",
+                   "phone_number": "765-426-3669",
+                   "birthday": "1998-06-12"}
+
+    def test_authy_user(self):
+        self.Test_authy_volunteer_signup(self.newUserDict)
+        refresh_token, access_token = self.Test_authy_volunteer_login(self.newUserDict)
+        self.Test_authy_volunteer_account(self.newUserDict, access_token)
+        self.Test_bad_authy_login(access_token)
+
+
+    def Test_authy_volunteer_signup(self, newUserDict, expected=201, msg="Authy ID Creation Failed"):
+        """
+        Test volunteer signup endpoint for creation of authy_id
+        :param newUserDict:   Dictionary of volunteer account info.
+                            Required keys: email, password, first_name, last_name, phone_number, birthday
+        :param expected:    Expected status code. Default: 201
+        :param msg:     Failure message to use for assertEquals. Default: "Volunteer Signup Failed"
+        """
+        factory = APIRequestFactory()
+        signup_data = json.dumps(newUserDict)
+
+        signup_view = VolunteerSignupAPIView.as_view()
+
+        signup_request = factory.post(path="api/signup/volunteer/", data=signup_data, content_type="json")
+        signup_response = signup_view(signup_request)
+        self.assertEqual(signup_response.status_code, expected, msg)
+
+    def Test_authy_volunteer_login(self, userdict):
+        factory = APIRequestFactory()
+        obtain_token_data = 'email=' + str(userdict["email"]) + '&password=' + str(userdict["password"])
+        obtain_token_view = ObtainTokenPairView.as_view()
+
+        obtain_token_request = factory.post(path='api/token/', data=obtain_token_data,
+                                            content_type='application/x-www-form-urlencoded')
+        obtain_token_response = obtain_token_view(obtain_token_request)
+        self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this volunteer.")
+
+        refresh_token = obtain_token_response.data['refresh']
+        access_token = obtain_token_response.data['access']
+
+        return refresh_token, access_token
+
+
+    def Test_bad_authy_login(self, access_token):
+        obtain_token_data = {"token": "10000"}
+        obtain_token_data = json.dumps(obtain_token_data)
+        obtain_dual_auth_view = ObtainDualAuthView.as_view()
+        headers = {'Authorization': 'Bearer ' + access_token}
+        client = RequestsClient()
+        client.headers.update({'Authorization':'Bearer' + access_token})
+        path="http://testserver/api/token/dualauth/"
+        response = client.get(path)
+        status = response.status_code
+
+        self.assertEqual(status, 405, "This should return a 405.")
+
+
+    def Test_authy_volunteer_account(self, userdict, access_token, expected_end_user=1):
+        """
+        Test volunteer information endpoint
+        :param userdict: Dictionary used to create user.
+            Needs to have the following keys: first_name, last_name, birthday
+        :param access_token: Access token for this user
+        :param expected_end_user: Expected end_user id
+        """
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
+        path = "http://testserver/api/volunteer/"
+
+        volunteer_data_response = client.get(path)
+        content = json.loads(volunteer_data_response.content)
+        end_user = EndUser.objects.get(id=content['end_user'])
+        exp_end_user = EndUser.objects.get(id=expected_end_user)
+        self.assertEqual(end_user.authy_id, exp_end_user.authy_id)
+
+
 
 
 class SignupLoginTest(TestCase):
@@ -1271,7 +1372,7 @@ class SignupLoginTest(TestCase):
         """
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "first_name": "test",
-                                  "last_name": "volunteer", "birthday": "1998-06-12"})
+                                  "last_name": "volunteer", "phone_number": "765-426-3669", "birthday": "1998-06-12"})
 
         signup_view = VolunteerSignupAPIView.as_view()
 
@@ -1378,4 +1479,5 @@ class SignupLoginTest(TestCase):
         email_response = email_view(email_request)
 
         self.assertEqual(email_response.status_code, expected, msg)
+
 

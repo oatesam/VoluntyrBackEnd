@@ -7,6 +7,8 @@ import pytz
 
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
+    authy_id = models.CharField(max_length=12, null=True, blank=True)
+
     is_active = models.BooleanField(default=True)
 
     is_staff = models.BooleanField(default=False)
@@ -20,6 +22,9 @@ class EndUser(AbstractBaseUser, PermissionsMixin):
 
     def get_username(self):
         return self.email
+
+    def get_authy_id(self):
+        return self.authy_id
 
     def set_last_login(self):
         self.last_login = timezone.now()
@@ -47,6 +52,7 @@ class Volunteer(models.Model):
     first_name = models.CharField(max_length=200)
     last_name = models.CharField(max_length=200)
     birthday = models.DateField(null=True)
+    phone_number = models.CharField(max_length=100, blank=False)
 
     def get_full_name(self):
         return "%s %s" % (self.first_name, self.last_name)

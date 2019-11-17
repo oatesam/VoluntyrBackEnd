@@ -1,12 +1,13 @@
+from authy.api import AuthyApiClient
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenObtainSerializer
 
 from .models import Event, Volunteer, Organization, EndUser
 
 
 # [Done] TODO: Update frontend Event object to have an ID field as the first field.
-
+authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
 class EventsSerializer(serializers.ModelSerializer):
     """
@@ -24,7 +25,7 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
 
     def get_token(self, user):
         """
-        Generates JWT token for user
+        Generates JWT token for user and requests SMS dual-authentication
         :param user: EndUser requesting token
         :return: Token
         """
@@ -35,6 +36,9 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
 
         scope = self.get_scope(user)
         token['scope'] = scope
+
+        authy_id = end_user.authy_id
+        authy_api.users.request_sms(authy_id, {'force': True})
 
         return token
 
@@ -50,6 +54,11 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         elif Organization.objects.filter(end_user=user).exists():
             scope = settings.SCOPE_TYPES['Organization']
         return scope
+
+class ObtainDualAuthSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for Dual Auth Tokens
+    """
 
 
 class EndUserSerializer(serializers.ModelSerializer):
@@ -67,7 +76,7 @@ class VolunteerSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Volunteer
-        fields = ['first_name', 'last_name', 'birthday', 'end_user']
+        fields = ['first_name', 'last_name', 'phone_number', 'birthday', 'end_user']
 
 
 class VolunteerEventsSerializer(serializers.ModelSerializer):
