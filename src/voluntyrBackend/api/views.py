@@ -96,8 +96,6 @@ class ObtainTokenPairView(TokenObtainPairView):
     serializer_class = ObtainTokenPairSerializer
 
 
-
-
 class ObtainDualAuthView(generics.GenericAPIView):
     """
     Class View for user to obtain Dual Authentication Token

@@ -61,8 +61,6 @@ class ObtainDualAuthSerializer(TokenObtainPairSerializer):
     """
 
 
-
-
 class EndUserSerializer(serializers.ModelSerializer):
     """
     Serializer for an EndUser instance
