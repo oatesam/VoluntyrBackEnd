@@ -78,7 +78,7 @@ class VolunteerSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Volunteer
-        fields = ['first_name', 'last_name', 'birthday', 'end_user']
+        fields = ['first_name', 'last_name', 'phone_number', 'birthday', 'end_user']
 
 
 class VolunteerEventsSerializer(serializers.ModelSerializer):

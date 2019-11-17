@@ -173,15 +173,15 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
         body = json.loads(str(request.body, encoding='utf-8'))
 
         try:
-            print('phone number = ', body['phone_number']['value'],file=sys.stderr)
             authy_user = authy_api.users.create(
                 email=body['email'],
-                phone=body['phone_number']['value'],
+                phone=body['phone_number'],
                 country_code=1)
 
             end_user = EndUser.objects.create_user(body['email'], body['password'], authy_user.id)
             volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
-                                                 birthday=body['birthday'], end_user_id=end_user.id)
+                                                 birthday=body['birthday'], phone_number=body['phone_number'],
+                                                 end_user_id=end_user.id)
 
             serializer = VolunteerSerializer(volunteer)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)

@@ -333,6 +333,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -427,6 +428,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "First user",
             "last_name": "volunteer",
+            "phone_number": "765-426-3669",
             "birthday": "1998-06-12"
         },
         {
@@ -434,6 +436,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "Second User",
             "last_name": "volunteer",
+            "phone_number": "765-426-3669",
             "birthday": "1998-06-12"
         },
         {
@@ -441,6 +444,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "Third User",
             "last_name": "volunteer",
+            "phone_number": "765-426-3669",
             "birthday": "1998-06-12"
         }
     ]
@@ -538,6 +542,7 @@ class EventEmailTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -776,6 +781,7 @@ class EventSearchTest(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -908,6 +914,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -1070,6 +1077,7 @@ class VolunteerDashboardTest(TestCase):
                    "password": "testpassword2",
                    "first_name": "newuser",
                    "last_name": "volunteer",
+                    "phone_number": "765-426-3669",
                    "birthday": "1998-06-12"}
 
     def test_volunteer_account_info(self):
@@ -1272,7 +1280,7 @@ class SignupLoginTest(TestCase):
         """
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "first_name": "test",
-                                  "last_name": "volunteer", "birthday": "1998-06-12"})
+                                  "last_name": "volunteer", "phone_number": "765-426-3669", "birthday": "1998-06-12"})
 
         signup_view = VolunteerSignupAPIView.as_view()
 
@@ -1380,3 +1388,7 @@ class SignupLoginTest(TestCase):
 
         self.assertEqual(email_response.status_code, expected, msg)
 
+class DualAuthTest(TestCase, Utilities):
+    """
+    Test Dual Authentication
+    """

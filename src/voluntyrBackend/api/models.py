@@ -52,6 +52,7 @@ class Volunteer(models.Model):
     first_name = models.CharField(max_length=200)
     last_name = models.CharField(max_length=200)
     birthday = models.DateField(null=True)
+    phone_number = models.CharField(max_length=100, blank=False)
 
     def get_full_name(self):
         return "%s %s" % (self.first_name, self.last_name)
