@@ -2,7 +2,7 @@ from .shared import *
 import dj_database_url
 
 SECRET_KEY = os.environ.get('VOL_SECRET_KEY')
-ACCOUNT_SECURITY_API_KEY='Sq5dZocEP1yVIEq6kHXcplyps7lbpWi1'
+ACCOUNT_SECURITY_API_KEY = 'GuOHIvasIHAUTMk0AUcaVs8gE4lHRtGG'
 
 ALLOWED_HOSTS = [
     'voluntyr-backend-stg.herokuapp.com',
