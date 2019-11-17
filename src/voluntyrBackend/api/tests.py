@@ -796,11 +796,52 @@ class EventSearchTest(TestCase, Utilities):
         self.organizationTokens = self.organization_login(self.organizationDict)
         self.expectedEventIds = self.make_events(self.events)
 
+    def test_event_search_with_title(self):
+        client= RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/events/?title=Second event"
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        self.assertEqual(len(content), 1, "Search result didn't match")
+
+    def test_event_search_with_keyword(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/events/?keyword=event"
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        self.assertEqual(len(content), 3, "Search result didn't match")
+
+    def test_event_search_with_location(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/events/?location=IU"
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        self.assertEqual(len(content), 3, "Search result didn't match")
+
+    def test_event_search_with_date_range(self):
+        start_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today)) if self.today < 10 else str(self.today)) + 'T10:00:00-05:00'
+        end_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today + 3)) if self.today + 4 < 10 else str(self.today + 4)) + 'T18:00:00-05:00'
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/events/?start_time="+str(start_time)+"&end_time="+str(end_time)
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        self.assertEqual(len(content), 3, "Search result didn't match")
+
+    def test_event_search_with_orgName(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+        path = "http://testserver/api/events/?orgName=testOrg1"
+        data_response = client.get(path)
+        content = json.loads(data_response.content)
+        self.assertEqual(len(content), 3, "Search result didn't match")
+
     def test_event_search(self):
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
         path = "http://testserver/api/events/"
-
         data_response = client.get(path)
         content = json.loads(data_response.content)
         status = data_response.status_code
