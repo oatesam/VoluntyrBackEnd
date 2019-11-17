@@ -124,9 +124,9 @@ class InviteTests(TestCase, Utilities):
     eventDicts = [
         {
             'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 1) + ':00:00-05:00',
+                hour + 1).zfill(2) + ':00:00-05:00',
             'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 2) + ':00:00-05:00',
+                hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
             'title': 'First event',
             'location': 'IU',
@@ -135,10 +135,10 @@ class InviteTests(TestCase, Utilities):
         {
             'start_time': '2019-' + str(month) + '-' + (
                 ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1) + ':00:00-05:00',
+                hour + 1).zfill(2) + ':00:00-05:00',
             'end_time': '2019-' + str(month) + '-' + (
                 ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2) + ':00:00-05:00',
+                hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
             'title': 'First event',
             'location': 'IU',
@@ -305,9 +305,9 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
     eventDicts = [
         {
             'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 1) + ':00:00-05:00',
+                hour + 1).zfill(2) + ':00:00-05:00',
             'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 2) + ':00:00-05:00',
+                hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
             'title': 'First event',
             'location': 'IU',
@@ -316,10 +316,10 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
         {
             'start_time': '2019-' + str(month) + '-' + (
                 ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1) + ':00:00-05:00',
+                hour + 1).zfill(2) + ':00:00-05:00',
             'end_time': '2019-' + str(month) + '-' + (
                 ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2) + ':00:00-05:00',
+                hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
             'title': 'First event',
             'location': 'IU',
@@ -511,8 +511,10 @@ class EventEmailTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(hour + 1) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(hour + 2) + ':00:00-05:00',
+            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T'
+                          + str(hour + 1).zfill(2) + ':00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T'
+                        + str(hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
             'title': 'First event',
             'location': 'IU',
@@ -520,9 +522,9 @@ class EventEmailTests(TestCase, Utilities):
         },
         {
             'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1) + ':00:00-05:00',
+                hour + 1).zfill(2) + ':00:00-05:00',
             'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2) + ':00:00-05:00',
+                hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
             'title': 'First event',
             'location': 'IU',
