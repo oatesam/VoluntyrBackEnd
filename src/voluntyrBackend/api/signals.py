@@ -5,4 +5,7 @@ from .models import Event
 
 @receiver(post_save, sender=Event)
 def edit_handler(sender, **kwargs):
-    print("test")
+    if not kwargs['created']:
+        print("test: " + str(kwargs))
+
+# post_save.connect(edit_handler, weak=False, dispatch_uid="event_post_save")

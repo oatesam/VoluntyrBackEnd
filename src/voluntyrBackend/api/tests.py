@@ -156,7 +156,7 @@ class InviteTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -168,7 +168,7 @@ class InviteTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -350,7 +350,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -410,7 +410,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
         self.assertDictEqual(expected, actual, "Organization dictionary didn't match expected")
@@ -462,7 +462,7 @@ class OrganizationEventTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -559,7 +559,7 @@ class EventEmailTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens_real = {}
@@ -571,7 +571,7 @@ class EventEmailTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens_fake = {}
@@ -671,7 +671,7 @@ class OrganizationCreateEvent(TestCase, Utilities):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
         Utilities.organization_signup(self, organization_dict)
@@ -708,7 +708,7 @@ class OrganizationEditEvent(TestCase, Utilities):
             "street_address": "700 N, Woodlawn Lane",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-812-253-9111",
+            "phone_number": "765-426-3669",
             "organization_motto": "Org Motto"
         }
         Utilities.organization_signup(self, organization_dict)
@@ -798,10 +798,16 @@ class EventSearchTest(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
+
+    time = datetime.time(datetime.today())
+    if time >= datetime.strptime('17:00:00-0500', '%H:%M:%S%z').time():
+        expected_count = 2
+    else:
+        expected_count = 3
 
     def setUp(self):
         self.volunteer_signup(self.volunteerDict)
@@ -824,7 +830,7 @@ class EventSearchTest(TestCase, Utilities):
         path = "http://testserver/api/events/?keyword=event"
         data_response = client.get(path)
         content = json.loads(data_response.content)
-        self.assertEqual(len(content), 3, "Search result didn't match")
+        self.assertEqual(len(content), self.expected_count, "Search result didn't match")
 
     def test_event_search_with_location(self):
         client = RequestsClient()
@@ -832,7 +838,7 @@ class EventSearchTest(TestCase, Utilities):
         path = "http://testserver/api/events/?location=IU"
         data_response = client.get(path)
         content = json.loads(data_response.content)
-        self.assertEqual(len(content), 3, "Search result didn't match")
+        self.assertEqual(len(content), self.expected_count, "Search result didn't match")
 
     def test_event_search_with_date_range(self):
         start_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today)) if self.today < 10 else str(self.today)) + 'T10:00:00-05:00'
@@ -842,7 +848,7 @@ class EventSearchTest(TestCase, Utilities):
         path = "http://testserver/api/events/?start_time="+str(start_time)+"&end_time="+str(end_time)
         data_response = client.get(path)
         content = json.loads(data_response.content)
-        self.assertEqual(len(content), 3, "Search result didn't match")
+        self.assertEqual(len(content), self.expected_count, "Search result didn't match")
 
     def test_event_search_with_orgName(self):
         client = RequestsClient()
@@ -850,7 +856,7 @@ class EventSearchTest(TestCase, Utilities):
         path = "http://testserver/api/events/?orgName=testOrg1"
         data_response = client.get(path)
         content = json.loads(data_response.content)
-        self.assertEqual(len(content), 3, "Search result didn't match")
+        self.assertEqual(len(content), self.expected_count, "Search result didn't match")
 
     def test_event_search(self):
         client = RequestsClient()
@@ -931,7 +937,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "1-800-000-0000",
+        "phone_number": "765-426-3669",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -1060,7 +1066,7 @@ class OrganizationDashboardTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
         SignupLoginTest.Test_organization_signup(self, organizationDict)
@@ -1201,11 +1207,8 @@ class DualAuthTest(TestCase, Utilities):
 
     def Test_bad_authy_login(self, access_token):
         obtain_token_data = {"token": "10000"}
-        obtain_token_data = json.dumps(obtain_token_data)
-        obtain_dual_auth_view = ObtainDualAuthView.as_view()
-        headers = {'Authorization': 'Bearer ' + access_token}
         client = RequestsClient()
-        client.headers.update({'Authorization':'Bearer' + access_token})
+        client.headers.update({'Authorization': 'Bearer ' + access_token})
         path = "http://testserver/api/token/dualauth/"
         response = client.get(path)
         status = response.status_code
@@ -1230,8 +1233,6 @@ class DualAuthTest(TestCase, Utilities):
         end_user = EndUser.objects.get(id=content['end_user'])
         exp_end_user = EndUser.objects.get(id=expected_end_user)
         self.assertEqual(end_user.authy_id, exp_end_user.authy_id)
-
-
 
 
 class SignupLoginTest(TestCase):
@@ -1267,7 +1268,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
 
@@ -1285,7 +1286,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
 
@@ -1304,7 +1305,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
 
@@ -1335,7 +1336,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
 
@@ -1354,7 +1355,7 @@ class SignupLoginTest(TestCase):
             "name": "testOrg1",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "1-800-000-0000",
+            "phone_number": "765-426-3669",
             "organization_motto": "The motto"
         }
 
