@@ -121,6 +121,7 @@ class ObtainDualAuthView(generics.GenericAPIView):
         else:
             return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class OrganizationEventsAPIView(generics.ListAPIView):
     """
     Class view to get events run by the organization in the requesting JWT

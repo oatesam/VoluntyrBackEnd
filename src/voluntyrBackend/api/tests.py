@@ -1199,7 +1199,6 @@ class DualAuthTest(TestCase, Utilities):
 
         return refresh_token, access_token
 
-
     def Test_bad_authy_login(self, access_token):
         obtain_token_data = {"token": "10000"}
         obtain_token_data = json.dumps(obtain_token_data)
@@ -1207,7 +1206,7 @@ class DualAuthTest(TestCase, Utilities):
         headers = {'Authorization': 'Bearer ' + access_token}
         client = RequestsClient()
         client.headers.update({'Authorization':'Bearer' + access_token})
-        path="http://testserver/api/token/dualauth/"
+        path = "http://testserver/api/token/dualauth/"
         response = client.get(path)
         status = response.status_code
 

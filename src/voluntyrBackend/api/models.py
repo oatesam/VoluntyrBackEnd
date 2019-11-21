@@ -5,6 +5,7 @@ import datetime
 from .managers import EndUserManager
 import pytz
 
+
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
     authy_id = models.CharField(max_length=12, null=True, blank=True)

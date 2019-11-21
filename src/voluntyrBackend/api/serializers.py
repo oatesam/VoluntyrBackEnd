@@ -55,6 +55,7 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
             scope = settings.SCOPE_TYPES['Organization']
         return scope
 
+
 class ObtainDualAuthSerializer(TokenObtainPairSerializer):
     """
     Serializer for Dual Auth Tokens
