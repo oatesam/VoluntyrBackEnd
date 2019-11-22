@@ -338,7 +338,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3670",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -350,7 +350,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3670",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -410,7 +410,7 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3670",
             "organization_motto": "The motto"
         }
         self.assertDictEqual(expected, actual, "Organization dictionary didn't match expected")
@@ -433,7 +433,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "First user",
             "last_name": "volunteer",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3671",
             "birthday": "1998-06-12"
         },
         {
@@ -441,7 +441,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "Second User",
             "last_name": "volunteer",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3672",
             "birthday": "1998-06-12"
         },
         {
@@ -449,7 +449,7 @@ class OrganizationEventTests(TestCase, Utilities):
             "password": "testpassword2",
             "first_name": "Third User",
             "last_name": "volunteer",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3673",
             "birthday": "1998-06-12"
         }
     ]
@@ -462,7 +462,7 @@ class OrganizationEventTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3674",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -547,7 +547,7 @@ class EventEmailTests(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3675",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -559,7 +559,7 @@ class EventEmailTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3676",
         "organization_motto": "The motto"
     }
     organizationTokens_real = {}
@@ -571,7 +571,7 @@ class EventEmailTests(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3677",
         "organization_motto": "The motto"
     }
     organizationTokens_fake = {}
@@ -671,7 +671,7 @@ class OrganizationCreateEvent(TestCase, Utilities):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3677",
             "organization_motto": "The motto"
         }
         Utilities.organization_signup(self, organization_dict)
@@ -708,7 +708,7 @@ class OrganizationEditEvent(TestCase, Utilities):
             "street_address": "700 N, Woodlawn Lane",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3678",
             "organization_motto": "Org Motto"
         }
         Utilities.organization_signup(self, organization_dict)
@@ -786,7 +786,7 @@ class EventSearchTest(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3679",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -798,7 +798,7 @@ class EventSearchTest(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3680",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -925,7 +925,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         "password": "testpassword2",
         "first_name": "newuser",
         "last_name": "volunteer",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3681",
         "birthday": "1998-06-12"
     }
     volunteerTokens = {}
@@ -937,7 +937,7 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         "street_address": "1 IU st",
         "city": "Bloomington",
         "state": "Indiana",
-        "phone_number": "765-426-3669",
+        "phone_number": "765-426-3682",
         "organization_motto": "The motto"
     }
     organizationTokens = {}
@@ -1066,7 +1066,7 @@ class OrganizationDashboardTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3683",
             "organization_motto": "The motto"
         }
         SignupLoginTest.Test_organization_signup(self, organizationDict)
@@ -1088,7 +1088,7 @@ class VolunteerDashboardTest(TestCase):
                    "password": "testpassword2",
                    "first_name": "newuser",
                    "last_name": "volunteer",
-                    "phone_number": "765-426-3669",
+                    "phone_number": "765-426-3684",
                    "birthday": "1998-06-12"}
 
     def test_volunteer_account_info(self):
@@ -1163,7 +1163,7 @@ class DualAuthTest(TestCase, Utilities):
                    "password": "testpassword2",
                    "first_name": "newuser",
                    "last_name": "volunteer",
-                   "phone_number": "765-426-3669",
+                   "phone_number": "765-426-3685",
                    "birthday": "1998-06-12"}
 
     def test_authy_user(self):
@@ -1268,7 +1268,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3686",
             "organization_motto": "The motto"
         }
 
@@ -1286,7 +1286,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3687",
             "organization_motto": "The motto"
         }
 
@@ -1305,7 +1305,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3688",
             "organization_motto": "The motto"
         }
 
@@ -1336,7 +1336,7 @@ class SignupLoginTest(TestCase):
             "street_address": "1 IU st",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3689",
             "organization_motto": "The motto"
         }
 
@@ -1355,7 +1355,7 @@ class SignupLoginTest(TestCase):
             "name": "testOrg1",
             "city": "Bloomington",
             "state": "Indiana",
-            "phone_number": "765-426-3669",
+            "phone_number": "765-426-3690",
             "organization_motto": "The motto"
         }
 
@@ -1372,7 +1372,7 @@ class SignupLoginTest(TestCase):
         """
         factory = APIRequestFactory()
         signup_data = json.dumps({"email": email, "password": password, "first_name": "test",
-                                  "last_name": "volunteer", "phone_number": "765-426-3669", "birthday": "1998-06-12"})
+                                  "last_name": "volunteer", "phone_number": "765-426-3691", "birthday": "1998-06-12"})
 
         signup_view = VolunteerSignupAPIView.as_view()
 
