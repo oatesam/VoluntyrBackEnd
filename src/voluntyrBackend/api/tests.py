@@ -1,16 +1,14 @@
 import json
-import sys
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
 
 from authy.api import AuthyApiClient
+from django.conf import settings
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
+
 from .models import Event, Organization, EndUser
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, \
-    ObtainDualAuthView
-from django.conf import settings
+from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 from .urlTokens.token import URLToken
