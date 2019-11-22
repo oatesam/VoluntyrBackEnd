@@ -176,8 +176,19 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
                 email=body['email'],
                 phone=body['phone_number'],
                 country_code=1)
-
-            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_user.id)
+            authy_id = authy_user.id
+            # if authy_id is None:
+            #     try:
+            #         vol = Volunteer.objects.get(end_user__email=body['email'], phone_number=body['phone_number'])
+            #         authy_id = vol.end_user.authy_id
+            #     except ObjectDoesNotExist:
+            #         org = Organization.objects.get(end_user__email=body['email'], phone_number=body['phone_number'])
+            #         authy_id = org.end_user.authy_id
+            #
+            # print("Authuser id: " + str(authy_id))
+            # print("Email: " + body['email'])
+            # print("Phone Number: " + body['phone_number'])
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
             volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
                                                  birthday=body['birthday'], phone_number=body['phone_number'],
                                                  end_user_id=end_user.id)
