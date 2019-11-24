@@ -5,9 +5,10 @@ import math
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import send_mass_mail
+from django.core.mail import send_mass_mail, send_mail
 from django.db import IntegrityError
 from django.db.models import Q
+from django.http import HttpRequest
 from django.utils import timezone
 from .signals import signal_volunteer_signed_up_event
 from rest_framework import generics, status
@@ -123,6 +124,40 @@ class ObtainDualAuthView(generics.GenericAPIView):
             return Response(data={'verified': 'true'}, status=status.HTTP_200_OK)
         else:
             return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class RecoverPasswordView(generics.CreateAPIView):
+    """
+    View to generate an recovery code for an event. GET will return a recovery code for this user and POST will email
+    the provided email a link to recover
+    """
+    def create(self, req, *args, **kwargs):
+        try:
+            body = json.loads(str(req.body, encoding='utf-8'))
+            end_user = EndUser.objects.get(email=body['email'])
+        except ObjectDoesNotExist:
+            return Response(data={"Error": "Given user does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        full_path = HttpRequest.get_full_path(req)
+        print('url generated = ', full_path, file=sys.stderr)
+        email = body['email']
+        subject = "Voluntyr Password Recovery Link "
+        recover_code = self._generate_recover_code(end_user.id)
+        message = "Please find the recovery link below. \n\n" + \
+                   "\n" + "\n\n\n\n---------------------------------------------\n" \
+                  + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
+                   "Please contact us through our website instead, at voluntyr.com"
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+        return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
+
+    def _generate_recover_code(self, user_id):
+        token = URLToken(data={"user_id": user_id})
+        return token.get_token()
+
+class ResetPasswordView(generics.UpdateAPIView):
+    def get(self):
+        return 1
 
 
 class OrganizationEventsAPIView(generics.ListAPIView):
