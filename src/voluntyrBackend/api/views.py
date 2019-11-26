@@ -139,25 +139,51 @@ class RecoverPasswordView(generics.CreateAPIView):
         except ObjectDoesNotExist:
             return Response(data={"Error": "Given user does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
-        full_path = HttpRequest.get_full_path(req)
-        print('url generated = ', full_path, file=sys.stderr)
         email = body['email']
+        url = body['url']
         subject = "Voluntyr Password Recovery Link "
         recover_code = self._generate_recover_code(end_user.id)
+        url_string = url + "/" + str(recover_code) + '/'
         message = "Please find the recovery link below. \n\n" + \
+                   "Recovery Link: \n" + url_string + \
                    "\n" + "\n\n\n\n---------------------------------------------\n" \
                   + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
                    "Please contact us through our website instead, at voluntyr.com"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+        print(message, file=sys.stderr)
         return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
 
     def _generate_recover_code(self, user_id):
         token = URLToken(data={"user_id": user_id})
         return token.get_token()
 
-class ResetPasswordView(generics.UpdateAPIView):
-    def get(self):
-        return 1
+
+class ResetPasswordView(generics.CreateAPIView):
+    """
+    An endpoint for changing password.
+    """
+    def create(self, request, *args, **kwargs):
+        try:
+            body = json.loads(str(request.body, encoding='utf-8'))
+            urlToken = body['user_id']
+            token = URLToken(token=urlToken)
+            user_id = token.get_data()['user_id']
+            end_user = EndUser.objects.get(id=user_id)
+        except ObjectDoesNotExist:
+            print('user didn\'t exist, poopie', file=sys.stderr)
+            return Response(data={"error": "User with this id does not exist."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # set_password also hashes the password that the user will get
+        end_user.set_password(body['password'])
+        end_user.save()
+        response = {
+            'status': 'success',
+            'code': status.HTTP_200_OK,
+            'message': 'Password updated successfully',
+            'data': []
+        }
+        return Response(response)
 
 
 class OrganizationEventsAPIView(generics.ListAPIView):

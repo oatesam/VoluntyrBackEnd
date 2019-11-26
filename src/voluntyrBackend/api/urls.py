@@ -16,7 +16,7 @@ urlpatterns = [
     path('token/', ObtainTokenPairView.as_view()),
     path('token/dualauth/', ObtainDualAuthView.as_view()),
     path('token/recover/', RecoverPasswordView.as_view()),
-    path('token/recover/<url_token:user_code>/', ResetPasswordView.as_view()),
+    path('token/recover/reset/', ResetPasswordView.as_view()),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('signup/organization/', OrganizationSignupAPIView.as_view()),
     path('signup/volunteer/', VolunteerSignupAPIView.as_view()),
