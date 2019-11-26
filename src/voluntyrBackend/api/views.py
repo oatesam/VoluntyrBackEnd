@@ -462,13 +462,24 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
                 org_id = organization.id
                 body = json.loads(str(request.body, encoding='utf-8'))
                 event = Event.objects.get(id=body['id'], organization_id=org_id)
-                event.start_time = body['start_time']
-                event.end_time = body['end_time']
-                event.date = body['date']
-                event.title = body['title']
-                event.location = body['location']
-                event.description = body['description']
-                event.save()
+
+                e = OrganizationEventSerializer(instance=event).data
+                diffs = []
+                for key in body:
+                    if key in e:
+                        if body[key] != e[key]:
+                            diffs.append(key)
+                    else:
+                        diffs.append(key)
+
+                if len(diffs) > 0:
+                    event.start_time = body['start_time']
+                    event.end_time = body['end_time']
+                    event.date = body['date']
+                    event.title = body['title']
+                    event.location = body['location']
+                    event.description = body['description']
+                    event.save()
                 return Response(status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)

@@ -3,15 +3,16 @@ from datetime import datetime, timedelta
 
 from authy.api import AuthyApiClient
 from django.conf import settings
+from django.core import mail
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .models import Event, Organization, EndUser
 from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
+from .urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
-from .urlTokens.token import URLToken
 
 # TODO: test for double signup of events
 
@@ -730,7 +731,21 @@ class OrganizationEditEvent(TestCase, Utilities):
 
         create_event_response = client.post(path, json=newEvent)
         self.assertEqual(create_event_response.status_code, expected, msg="Failed to create event")
+        self.signup_register_volunteer(newEvent['id'])
         self.edit_event(access_token, newEvent)
+
+    def signup_register_volunteer(self, event_id):
+        volunteer_dict = {
+            "email": "charlie.frank72@gmail.com",
+            "password": "testpassword2",
+            "first_name": "newuser",
+            "last_name": "volunteer",
+            "phone_number": "765-426-3675",
+            "birthday": "1998-06-12"
+        }
+        self.volunteer_signup(volunteer_dict)
+        volunteer_tokens = self.volunteer_login(volunteer_dict)
+        self.volunteer_signup_for_event(volunteer_tokens['access'], event_id)
 
     def edit_event(self, access_token, newEvent):
         editDetails = {
@@ -739,12 +754,18 @@ class OrganizationEditEvent(TestCase, Utilities):
         newEvent.update(editDetails)
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + access_token})
+
+        pre_edit_outbox_len = len(mail.outbox)
+
         path = "http://testserver/api/organization/updateEvent/"
         create_event_response = client.put(path, json=newEvent)
         self.assertEqual(create_event_response.status_code, 201, msg="Failed to edit event")
+        self.assertGreater(len(mail.outbox) + 1, pre_edit_outbox_len)
+
         path = "http://testserver/api/organization/event/1/"
         create_event_response = client.get(path)
         self.assertEqual(create_event_response.status_code, 200, msg="Failed to get edited event")
+        self.assertEqual(json.loads(create_event_response.content)['description'], editDetails['description'])
 
 
 class EventSearchTest(TestCase, Utilities):
@@ -1212,7 +1233,6 @@ class DualAuthTest(TestCase, Utilities):
         status = response.status_code
 
         self.assertEqual(status, 405, "This should return a 405.")
-
 
     def Test_authy_volunteer_account(self, userdict, access_token, expected_end_user=1):
         """
