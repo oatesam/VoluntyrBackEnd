@@ -121,6 +121,7 @@ class ObtainDualAuthView(generics.GenericAPIView):
         else:
             return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class OrganizationEventsAPIView(generics.ListAPIView):
     """
     Class view to get events run by the organization in the requesting JWT
@@ -176,7 +177,13 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
                 phone=body['phone_number'],
                 country_code=1)
 
-            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_user.id)
+            if not authy_user.ok():
+                authy_id = "209891210"
+                print(authy_user.errors())
+            else:
+                authy_id = authy_user.id
+
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
             volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
                                                  birthday=body['birthday'], phone_number=body['phone_number'],
                                                  end_user_id=end_user.id)
@@ -245,7 +252,14 @@ class OrganizationSignupAPIView(generics.CreateAPIView):
                 email=body['email'],
                 phone=body['phone_number'],
                 country_code=1)
-            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_user.id)
+
+            if not authy_user.ok():
+                authy_id = "209891210"
+                print(authy_user.errors())
+            else:
+                authy_id = authy_user.id
+
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
 
             missing_keys, body = self._check_dict(body, required, end_user)
             if len(missing_keys) > 0:
@@ -448,13 +462,24 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
                 org_id = organization.id
                 body = json.loads(str(request.body, encoding='utf-8'))
                 event = Event.objects.get(id=body['id'], organization_id=org_id)
-                event.start_time = body['start_time']
-                event.end_time = body['end_time']
-                event.date = body['date']
-                event.title = body['title']
-                event.location = body['location']
-                event.description = body['description']
-                event.save()
+
+                e = OrganizationEventSerializer(instance=event).data
+                diffs = []
+                for key in body:
+                    if key in e:
+                        if body[key] != e[key]:
+                            diffs.append(key)
+                    else:
+                        diffs.append(key)
+
+                if len(diffs) > 0:
+                    event.start_time = body['start_time']
+                    event.end_time = body['end_time']
+                    event.date = body['date']
+                    event.title = body['title']
+                    event.location = body['location']
+                    event.description = body['description']
+                    event.save()
                 return Response(status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)

@@ -5,6 +5,7 @@ import datetime
 from .managers import EndUserManager
 import pytz
 
+
 class EndUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
     authy_id = models.CharField(max_length=12, null=True, blank=True)
@@ -40,9 +41,6 @@ class Organization(models.Model):
     phone_number = models.CharField(max_length=100, blank=False)
     organization_motto = models.CharField(max_length=200)
 
-    # TODO: Add address fields - DONE
-    # TODO: Add short name field for emails
-
     def __str__(self):
         return self.name
 
@@ -71,7 +69,6 @@ class Event(models.Model):
     organization = models.ForeignKey('Organization', on_delete=models.PROTECT)
     volunteers = models.ManyToManyField(Volunteer, blank=True)
 
-    # TODO: Consider potential useful fields
     class Meta:
         ordering = ['date', 'start_time']
 

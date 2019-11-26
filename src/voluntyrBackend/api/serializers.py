@@ -6,7 +6,6 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from .models import Event, Volunteer, Organization, EndUser
 
 
-# [Done] TODO: Update frontend Event object to have an ID field as the first field.
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
 class EventsSerializer(serializers.ModelSerializer):
@@ -54,6 +53,7 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         elif Organization.objects.filter(end_user=user).exists():
             scope = settings.SCOPE_TYPES['Organization']
         return scope
+
 
 class ObtainDualAuthSerializer(TokenObtainPairSerializer):
     """
