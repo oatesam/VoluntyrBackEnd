@@ -9,8 +9,6 @@ from .models import Event
 @receiver(post_save, sender=Event)
 def edit_handler(sender, **kwargs):
     if not kwargs['created']:
-        # TODO: Story-60; These two TODO tags will finish the onUpdate portion of the story; 30m of work
-        # TODO: Story-60; For the 24h warning, needs to be detected and the same email sent but different words
         event = kwargs['instance']
 
         volunteer_emails = _get_volunteer_emails(event=event)
