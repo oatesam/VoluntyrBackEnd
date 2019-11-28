@@ -410,7 +410,9 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             "city": "Bloomington",
             "state": "Indiana",
             "phone_number": "765-426-3670",
-            "organization_motto": "The motto"
+            "organization_motto": "The motto",
+            "rating": 0.0,
+            "raters": 0
         }
         self.assertDictEqual(expected, actual, "Organization dictionary didn't match expected")
 
@@ -861,11 +863,13 @@ class EventSearchTest(TestCase, Utilities):
 
     def test_event_search_with_date_range(self):
         start_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today)) if self.today < 10 else str(self.today)) + 'T10:00:00-05:00'
-        end_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today + 3)) if self.today + 4 < 10 else str(self.today + 4)) + 'T18:00:00-05:00'
+        end_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today + 3)) if self.today + 3 < 10 else str(self.today + 3)) + 'T18:00:00-05:00'
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
-        path = "http://testserver/api/events/?start_time="+str(start_time)+"&end_time="+str(end_time)
+        path = "http://testserver/api/events/?start_time=" + str(start_time) + "&end_time=" + str(end_time)
         data_response = client.get(path)
+        print("Start time: " + start_time)
+        print("End time: " + end_time)
         content = json.loads(data_response.content)
         self.assertEqual(len(content), self.expected_count, "Search result didn't match")
 
@@ -920,8 +924,9 @@ class EventSearchTest(TestCase, Utilities):
         for i in range(0, len(expected_events)):
             current_id = expected_ids[i]
             current_dict = expected_events[i]
-            current_dict['organization'] = {"id": 1, "name": organization_name}
+            current_dict['organization'] = {"id": 1, "name": organization_name, "raters": 0, "rating": 0.0}
             current_dict['id'] = current_id
+
         return expected_events
 
     def make_events(self, events):
@@ -1497,5 +1502,4 @@ class SignupLoginTest(TestCase):
         email_response = email_view(email_request)
 
         self.assertEqual(email_response.status_code, expected, msg)
-
 

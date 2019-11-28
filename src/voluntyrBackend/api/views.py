@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from authy.api import AuthyApiClient
 
-from .models import Event, Organization, Volunteer, EndUser
+from .models import Event, Organization, Volunteer, EndUser, Rating
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
     EndUserSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
     SearchEventsSerializer, ObtainDualAuthSerializer
@@ -222,6 +222,27 @@ class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
         user_id = AuthCheck.get_user_id(req)
         volunteer = Volunteer.objects.get(end_user_id=user_id)
         return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__gte=timezone.now()))
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        else:
+            return AuthCheck.unauthorized_response()
+
+
+class VolunteerUnratedEventsAPIView(generics.ListAPIView, AuthCheck):
+    """
+    Class View for past events which a volunteer has signed up for and have not been rated
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_queryset(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        volunteer = Volunteer.objects.get(end_user_id=user_id)
+        rated_events = Rating.objects.filter(Q(volunteer=volunteer)).values('event')
+        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__lt=timezone.now()))\
+            .exclude(id__in=rated_events)
 
     def list(self, req, *args, **kwargs):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):

@@ -6,7 +6,7 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView, OrganizationEventAPIView, \
     OrganizationEmailVolunteers, CheckSignupAPIView, EventVolunteers, EventDetailAPIView, \
     OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView, VolunteerEventAPIView, InviteVolunteersAPIView, \
-    InviteAPIView, EventAPIView, ObtainDualAuthView
+    InviteAPIView, EventAPIView, ObtainDualAuthView, VolunteerUnratedEventsAPIView
 
 from .urlTokens.converter import TokenConverter
 
@@ -21,6 +21,7 @@ urlpatterns = [
     path('signup/checkemail/', CheckEmailAPIView.as_view()),
     path('volunteer/', VolunteerAPIView.as_view()),
     path('volunteer/events/', VolunteerEventsAPIView.as_view()),
+    path('volunteer/events/unrated/', VolunteerUnratedEventsAPIView.as_view()),
     path('volunteer/event/<int:event_id>/', VolunteerEventAPIView.as_view()),
     path('organization/', OrganizationAPIView.as_view()),
     path('organization/<int:org_id>/', VolunteerOrganizationAPIView.as_view()),
