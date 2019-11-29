@@ -393,6 +393,27 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
         return AuthCheck.unauthorized_response()
 
 
+class RateEventAPIView(generics.GenericAPIView, AuthCheck):
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def post(self, req, *args, **kwards):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            volunteer = Volunteer.objects.get(end_user__id=self.get_user_id(req))
+            event = self.get_object()
+            body = json.loads(str(req.body, encoding='utf-8'))
+            rating = int(body['rating'])
+            if 0 < rating < 6 and event.end_time < timezone.now():
+                organization = event.organization
+                new_rating = ((organization.rating * organization.raters) + rating) / (organization.raters + 1)
+                organization.raters += 1
+                organization.rating = new_rating
+                organization.save()
+
+                Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
+                return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
+            return AuthCheck.unauthorized_response()
+
 class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
     """
     Class view for volunteers to signup for events
