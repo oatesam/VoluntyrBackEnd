@@ -1,10 +1,12 @@
 import json
+import time
 from datetime import datetime, timedelta
 
 from authy.api import AuthyApiClient
 from django.conf import settings
 from django.core import mail
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -13,6 +15,7 @@ from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSign
 from .urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
+
 
 # TODO: test for double signup of events
 
@@ -113,12 +116,435 @@ class Utilities:
         :param token: Volunteer token
         :param event_id: event id to signup for
         """
+        pre_signup_outbox_len = len(mail.outbox)
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + token})
         path = "http://testserver/api/event/%d/volunteer/" % event_id
 
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
+        self.assertEqual(pre_signup_outbox_len, len(mail.outbox), "An email was sent after signing up for an event.")
+
+
+class RatingTest(TestCase, Utilities):
+    today = datetime.today().day
+    month = datetime.today().month
+    hour = datetime.today().time().hour
+    minute = datetime.today().time().minute
+    second = datetime.today().time().second
+
+    eventDicts = [
+        {
+            'start_time': timezone.now().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': timezone.now().strftime("%Y-%m-%d"),
+            'title': 'First event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': timezone.now().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': timezone.now().strftime("%Y-%m-%d"),
+            'title': 'Second event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=2, hours=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
+            'title': 'Third event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': timezone.now().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': timezone.now().strftime("%Y-%m-%d"),
+            'title': 'Fourth event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': timezone.now().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': timezone.now().strftime("%Y-%m-%d"),
+            'title': 'Fifth event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+        {
+            'start_time': timezone.now().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': timezone.now().strftime("%Y-%m-%d"),
+            'title': 'Sixth event',
+            'location': 'IU',
+            'description': 'Test event'
+        },
+    ]
+
+    volunteerDict = {
+        "email": "testemail99@gmail.com",
+        "password": "testpassword2",
+        "first_name": "newuser",
+        "last_name": "volunteer",
+        "phone_number": "765-426-3669",
+        "birthday": "1998-06-12"
+    }
+    volunteerTokens = {}
+
+    organizationDict = {
+        "email": "testorgemail20@gmail.com",
+        "password": "testpassword123",
+        "name": "Testing Organization",
+        "street_address": "1 IU st",
+        "city": "Bloomington",
+        "state": "Indiana",
+        "phone_number": "765-426-3669",
+        "organization_motto": "The motto"
+    }
+    organizationTokens = {}
+
+    def setUp(self):
+        self.volunteer_signup(self.volunteerDict)
+        self.volunteerTokens = self.volunteer_login(self.volunteerDict)
+        self.organization_signup(self.organizationDict)
+        self.organizationTokens = self.organization_login(self.organizationDict)
+
+        for event in self.eventDicts:
+            self.organization_new_event(self.organizationTokens['access'], event)
+
+    def test_bad_event(self):
+        event_id = 50
+        self.rate_event(event_id=event_id, rating=5, expected_status=400,
+                        expected_content={"Error": "Event " + str(event_id) + " does not exists."})
+
+    def test_double_rating(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/event/1/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+        path = "http://testserver/api/event/2/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 2)
+
+        path = "http://testserver/api/event/3/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 3)
+
+        path = "http://testserver/api/event/4/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 4)
+
+        path = "http://testserver/api/event/5/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 5)
+
+        path = "http://testserver/api/event/6/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 6)
+
+        path = "http://testserver/api/organization/1/"
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        original_rating = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+
+        self.rate_event(event_id=6, rating=5, expected_status=202, expected_content={"Result": "Rating accepted"})
+        path = "http://testserver/api/organization/1/"
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        current_rating = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+        self.assertEqual(current_rating['raters'], original_rating['raters'] + 1)
+        self.assertGreaterEqual(current_rating['rating'], original_rating['rating'])
+
+        self.rate_event(event_id=6, rating=5, expected_status=400,
+                        expected_content={"Error": "This volunteer has already rated this event"})
+
+    def test_unrated_events(self):
+        expected_ids = [4, 5]
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        # Refactor: check signup should be abstracted to Utilities
+        path = "http://testserver/api/event/1/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+        path = "http://testserver/api/event/2/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 2)
+
+        path = "http://testserver/api/event/3/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 3)
+
+        path = "http://testserver/api/event/4/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 4)
+
+        path = "http://testserver/api/event/5/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 5)
+
+        path = "http://testserver/api/event/6/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 6)
+
+        path = "http://testserver/api/volunteer/events/unrated/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+
+        content = json.loads(str(response.content, encoding='utf-8'))
+        self.assertEqual(len(content), 2, "Didn't receive the expected number of unrated events")
+        self.assertIn(content[0]['id'], expected_ids)
+        self.assertIn(content[1]['id'], expected_ids)
+
+    def test_rating(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/event/1/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+        path = "http://testserver/api/event/2/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 2)
+
+        self.assert_org_rating(1, 200, {'rating': 0.00, 'raters': 0})
+
+        self.rate_event(event_id=1, rating=5, expected_status=202, expected_content={"Result": "Rating accepted"})
+        self.assert_org_rating(1, 200, {'rating': 5, 'raters': 1})
+
+        self.rate_event(event_id=2, rating=1, expected_status=202, expected_content={"Result": "Rating accepted"})
+        self.assert_org_rating(1, 200, {'rating': 3.0, 'raters': 2})
+
+    def test_not_registered(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/organization/1/"
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        current_rating = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+
+        path = "http://testserver/api/event/1/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "true":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+        path = "http://testserver/api/event/1/rate/"
+        body = json.dumps({'rating': str(0)})
+
+        response = client.post(path, data=body)
+        status = response.status_code
+        self.assertEqual(status, 400, msg="Actual status: %d\nContent: %s"
+                                          % (status, str(response.content, encoding='utf-8')))
+
+        content = json.loads(response.content)
+        self.assertDictEqual(content, {"Error": "Requesting volunteer not registered for this event, "
+                                                "volunteers must be signed up for an event to rate it"})
+        self.assert_org_rating(org_id=1, expected_status=200, expected_content=current_rating)
+
+    def test_low_rating(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/organization/1/"
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        current_rating = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+
+        path = "http://testserver/api/event/1/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+        path = "http://testserver/api/event/1/rate/"
+        body = json.dumps({'rating': str(0)})
+
+        response = client.post(path, data=body)
+        status = response.status_code
+        self.assertEqual(status, 400, msg="Actual status: %d\nContent: %s"
+                                          % (status, str(response.content, encoding='utf-8')))
+
+        content = json.loads(response.content)
+        self.assertDictEqual(content, {"Error": "Rating must be between 1 and 5, inclusive"})
+        self.assert_org_rating(org_id=1, expected_status=200, expected_content=current_rating)
+
+    def test_high_rating(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/organization/1/"
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        current_rating = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+
+        path = "http://testserver/api/event/1/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 1)
+
+        path = "http://testserver/api/event/1/rate/"
+        body = json.dumps({'rating': str(6)})
+
+        response = client.post(path, data=body)
+        status = response.status_code
+        self.assertEqual(status, 400, msg="Actual status: %d\nContent: %s"
+                                          % (status, str(response.content, encoding='utf-8')))
+
+        content = json.loads(response.content)
+        self.assertDictEqual(content, {"Error": "Rating must be between 1 and 5, inclusive"})
+        self.assert_org_rating(org_id=1, expected_status=200, expected_content=current_rating)
+
+    def test_future_event(self):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/organization/1/"
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, 200)
+        current_rating = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+
+        path = "http://testserver/api/event/3/check/"
+        response = client.get(path)
+        status = response.status_code
+        self.assertEqual(status, 200, msg="Actual status: %d" % status)
+        content = json.loads(str(response.content, encoding='utf-8'))
+        if content['Signed-up'] == "false":
+            self.volunteer_signup_for_event(self.volunteerTokens['access'], 3)
+
+        path = "http://testserver/api/event/3/rate/"
+        body = json.dumps({'rating': str(3)})
+
+        response = client.post(path, data=body)
+        status = response.status_code
+        self.assertEqual(status, 400, msg="Actual status: %d\nContent: %s"
+                                          % (status, str(response.content, encoding='utf-8')))
+
+        content = json.loads(response.content)
+        self.assertDictEqual(content, {"Error": "This event has not ended yet, events can only rated after they have "
+                                                "finished."})
+        self.assert_org_rating(org_id=1, expected_status=200, expected_content=current_rating)
+
+    def rate_event(self, event_id, rating, expected_status, expected_content):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/event/%d/rate/" % event_id
+        body = json.dumps({'rating': str(rating)})
+
+        response = client.post(path, data=body)
+        status = response.status_code
+        self.assertEqual(status, expected_status, msg="Actual status: %d\nContent: %s"
+                                                      % (status, str(response.content, encoding='utf-8')))
+
+        content = json.loads(response.content)
+        self.assertDictEqual(content, expected_content)
+
+    def assert_org_rating(self, org_id, expected_status, expected_content):
+        client = RequestsClient()
+        client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
+
+        path = "http://testserver/api/organization/%d/" % org_id
+        response = client.get(path)
+        status = response.status_code
+        content = json.loads(response.content)
+
+        self.assertEqual(status, expected_status)
+        actual = {'rating': content['organization']['rating'], 'raters': content['organization']['raters']}
+
+        self.assertDictEqual(actual, expected_content)
+        return actual
 
 
 class InviteTests(TestCase, Utilities):
@@ -226,7 +652,8 @@ class InviteTests(TestCase, Utilities):
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
 
-        path = "http://testserver/api/invite/%s/" % URLToken(data={"event_id": 1}, lifetime=timedelta(milliseconds=1)).get_token()
+        path = "http://testserver/api/invite/%s/" % URLToken(data={"event_id": 1},
+                                                             lifetime=timedelta(milliseconds=1)).get_token()
 
         response = client.get(path)
         status = response.status_code
@@ -268,7 +695,6 @@ class InviteTests(TestCase, Utilities):
         token = URLToken(token=code)
         data = token.get_data()
         return int(data['event_id'])
-
 
 
 class URLTokenTests(TestCase):
@@ -410,7 +836,9 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             "city": "Bloomington",
             "state": "Indiana",
             "phone_number": "765-426-3670",
-            "organization_motto": "The motto"
+            "organization_motto": "The motto",
+            "rating": 0.0,
+            "raters": 0
         }
         self.assertDictEqual(expected, actual, "Organization dictionary didn't match expected")
 
@@ -511,7 +939,9 @@ class OrganizationEventTests(TestCase, Utilities):
 
         self.assertEqual(status, 200)
         self.assertEqual(content['number'], 2)
-        self.assertEqual(content['volunteers'], [{'name': self.volunteerDicts[0]['first_name'] + " " + self.volunteerDicts[0]['last_name']}, {'name': self.volunteerDicts[1]['first_name'] + " " + self.volunteerDicts[1]['last_name']}])
+        self.assertEqual(content['volunteers'],
+                         [{'name': self.volunteerDicts[0]['first_name'] + " " + self.volunteerDicts[0]['last_name']},
+                          {'name': self.volunteerDicts[1]['first_name'] + " " + self.volunteerDicts[1]['last_name']}])
 
 
 class EventEmailTests(TestCase, Utilities):
@@ -530,9 +960,11 @@ class EventEmailTests(TestCase, Utilities):
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
                 hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
                 hour + 2).zfill(2) + ':00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
             'title': 'First event',
@@ -699,6 +1131,7 @@ class OrganizationEditEvent(TestCase, Utilities):
     """
     Test the endpoint to edit event
     """
+
     def test_create_event(self):
         organization_dict = {
             "email": "testmail@gmail.com",
@@ -769,30 +1202,35 @@ class OrganizationEditEvent(TestCase, Utilities):
 
 
 class EventSearchTest(TestCase, Utilities):
-
     today = datetime.today().day
     month = datetime.today().month
 
     events = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T17:00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T18:00:00-05:00',
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today)) if today < 10 else str(today)) + 'T17:00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today)) if today < 10 else str(today)) + 'T18:00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)) + 'T17:00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)) + 'T18:00:00-05:00',
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)) + 'T17:00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)) + 'T18:00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today + 2)) if today + 2 < 10 else str(today + 2)),
             'title': 'Second event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)) + 'T17:00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)) + 'T18:00:00-05:00',
+            'start_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)) + 'T17:00:00-05:00',
+            'end_time': '2019-' + str(month) + '-' + (
+                ("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)) + 'T18:00:00-05:00',
             'date': '2019-' + str(month) + '-' + (("0" + str(today + 3)) if today + 3 < 10 else str(today + 3)),
             'title': 'Third event',
             'location': 'IU',
@@ -836,7 +1274,7 @@ class EventSearchTest(TestCase, Utilities):
         self.expectedEventIds = self.make_events(self.events)
 
     def test_event_search_with_title(self):
-        client= RequestsClient()
+        client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
         path = "http://testserver/api/events/?title=Second event"
         data_response = client.get(path)
@@ -860,11 +1298,13 @@ class EventSearchTest(TestCase, Utilities):
         self.assertEqual(len(content), self.expected_count, "Search result didn't match")
 
     def test_event_search_with_date_range(self):
-        start_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today)) if self.today < 10 else str(self.today)) + 'T10:00:00-05:00'
-        end_time = '2019-' + str(self.month) + '-' + (("0" + str(self.today + 3)) if self.today + 4 < 10 else str(self.today + 4)) + 'T18:00:00-05:00'
+        start_time = '2019-' + str(self.month) + '-' + (
+            ("0" + str(self.today)) if self.today < 10 else str(self.today)) + 'T10:00:00-05:00'
+        end_time = '2019-' + str(self.month) + '-' + (
+            ("0" + str(self.today + 3)) if self.today + 3 < 10 else str(self.today + 3)) + 'T18:00:00-05:00'
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.volunteerTokens['access']})
-        path = "http://testserver/api/events/?start_time="+str(start_time)+"&end_time="+str(end_time)
+        path = "http://testserver/api/events/?start_time=" + str(start_time) + "&end_time=" + str(end_time)
         data_response = client.get(path)
         content = json.loads(data_response.content)
         self.assertEqual(len(content), self.expected_count, "Search result didn't match")
@@ -893,7 +1333,8 @@ class EventSearchTest(TestCase, Utilities):
         else:
             slice_start = 0
 
-        expected_dicts = self.make_assert_dicts(self.events[slice_start:3], self.expectedEventIds[slice_start:3], self.organizationDict['name'])
+        expected_dicts = self.make_assert_dicts(self.events[slice_start:3], self.expectedEventIds[slice_start:3],
+                                                self.organizationDict['name'])
         self.assertEqual(len(content), len(expected_dicts),
                          "API failed to return expected number of events. Returned %d events but expected %d."
                          % (len(content), len(expected_dicts)))
@@ -920,8 +1361,9 @@ class EventSearchTest(TestCase, Utilities):
         for i in range(0, len(expected_events)):
             current_id = expected_ids[i]
             current_dict = expected_events[i]
-            current_dict['organization'] = {"id": 1, "name": organization_name}
+            current_dict['organization'] = {"id": 1, "name": organization_name, "raters": 0, "rating": 0.0}
             current_dict['id'] = current_id
+
         return expected_events
 
     def make_events(self, events):
@@ -1030,7 +1472,6 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         self.assertEqual(status, 400)
         self.assertDictEqual(content, {"Error": "Given event ID does not exist."})
 
-
     def test_volunteer_event_signup_organizer_token(self):
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + self.organizationTokens['access']})
@@ -1107,7 +1548,7 @@ class VolunteerDashboardTest(TestCase):
                    "password": "testpassword2",
                    "first_name": "newuser",
                    "last_name": "volunteer",
-                    "phone_number": "765-426-3684",
+                   "phone_number": "765-426-3684",
                    "birthday": "1998-06-12"}
 
     def test_volunteer_account_info(self):
@@ -1190,7 +1631,6 @@ class DualAuthTest(TestCase, Utilities):
         refresh_token, access_token = self.Test_authy_volunteer_login(self.newUserDict)
         self.Test_authy_volunteer_account(self.newUserDict, access_token)
         self.Test_bad_authy_login(access_token)
-
 
     def Test_authy_volunteer_signup(self, newUserDict, expected=201, msg="Authy ID Creation Failed"):
         """
@@ -1291,7 +1731,8 @@ class SignupLoginTest(TestCase):
         }
 
         self.Test_organization_signup(organization_dict)
-        self.Test_organization_signup(organization_dict, 409, "Email already has an account, shouldn't be able to signup")
+        self.Test_organization_signup(organization_dict, 409,
+                                      "Email already has an account, shouldn't be able to signup")
 
     def test_organization_volunteer_duplicate_signup(self):
         """
@@ -1309,8 +1750,9 @@ class SignupLoginTest(TestCase):
         }
 
         self.Test_organization_signup(organization_dict)
-        self.Test_volunteer_signup(organization_dict['email'], organization_dict['password'], 409, "Email has an organization account, shouldn't be able to "
-                                                         "signup for volunteer account")
+        self.Test_volunteer_signup(organization_dict['email'], organization_dict['password'], 409,
+                                   "Email has an organization account, shouldn't be able to "
+                                   "signup for volunteer account")
 
     def test_volunteer_organization_duplicate_signup(self):
         """
@@ -1329,7 +1771,7 @@ class SignupLoginTest(TestCase):
 
         self.Test_volunteer_signup(organization_dict['email'], organization_dict['password'])
         self.Test_organization_signup(organization_dict, 409, "Email has an organization account, shouldn't be able to "
-                                                            "signup for volunteer account")
+                                                              "signup for volunteer account")
 
     def test_volunteer_signup_login(self):
         """
@@ -1497,5 +1939,3 @@ class SignupLoginTest(TestCase):
         email_response = email_view(email_request)
 
         self.assertEqual(email_response.status_code, expected, msg)
-
-

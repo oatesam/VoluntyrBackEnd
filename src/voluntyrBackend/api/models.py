@@ -40,6 +40,8 @@ class Organization(models.Model):
     state = models.CharField(max_length=20, blank=False)
     phone_number = models.CharField(max_length=100, blank=False)
     organization_motto = models.CharField(max_length=200)
+    rating = models.FloatField(default=0)
+    raters = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -74,3 +76,10 @@ class Event(models.Model):
 
     def __str__(self):
         return '%s by %s' % (self.title, self.organization)
+
+
+class Rating(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.PROTECT)
+    volunteer = models.ForeignKey(Volunteer, on_delete=models.PROTECT)
+    rating = models.IntegerField()
+    rating_date = models.DateTimeField(auto_now_add=True)

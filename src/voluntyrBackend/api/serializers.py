@@ -97,7 +97,7 @@ class VolunteerSearchOrganizationHelperSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Organization
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'rating', 'raters']
 
 
 class SearchEventsSerializer(serializers.ModelSerializer):
@@ -119,7 +119,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'rating', 'raters']
 
 
 class OrganizationEventSerializer(serializers.ModelSerializer):
@@ -137,6 +137,7 @@ class VolunteerOrganizationSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Organization
-        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'end_user']
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'end_user',
+                  'rating', 'raters']
 
     end_user = EndUserSerializer(many=False)

@@ -8,7 +8,7 @@ from .models import Event
 
 @receiver(post_save, sender=Event)
 def edit_handler(sender, **kwargs):
-    if not kwargs['created']:
+    if not kwargs['created'] and 'volunteers' not in kwargs['update_fields']:
         event = kwargs['instance']
 
         volunteer_emails = _get_volunteer_emails(event=event)

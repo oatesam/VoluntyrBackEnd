@@ -1,6 +1,7 @@
 import json
 import sys
 import time
+import math
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -14,13 +15,14 @@ from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from authy.api import AuthyApiClient
 
-from .models import Event, Organization, Volunteer, EndUser
+from .models import Event, Organization, Volunteer, EndUser, Rating
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
     EndUserSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
     SearchEventsSerializer, ObtainDualAuthSerializer
 from .urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
+
 
 class AuthCheck:
     # TODO add getVolunteerID
@@ -230,6 +232,27 @@ class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
             return AuthCheck.unauthorized_response()
 
 
+class VolunteerUnratedEventsAPIView(generics.ListAPIView, AuthCheck):
+    """
+    Class View for past events which a volunteer has signed up for and have not been rated
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_queryset(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        volunteer = Volunteer.objects.get(end_user_id=user_id)
+        rated_events = Rating.objects.filter(Q(volunteer=volunteer)).values('event')
+        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__lt=timezone.now())) \
+            .exclude(id__in=rated_events)
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        else:
+            return AuthCheck.unauthorized_response()
+
+
 class OrganizationSignupAPIView(generics.CreateAPIView):
     """
     Class View for new organization signups.
@@ -341,7 +364,7 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
 
     def get_queryset(self):
         """
-        default return events that hasn't happend yet
+        default return events that hasn't happened yet
         check filter before final default return
         """
         queryset = Event.objects.all()
@@ -372,6 +395,57 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
         return AuthCheck.unauthorized_response()
 
 
+class RateEventAPIView(generics.GenericAPIView, AuthCheck):
+    """
+    Class View to submit ratings for completed events.
+
+    The requesting user must be a volunteer who was signed up for the event, the rating must be between 1 and 5,
+    inclusive, the rating must be submitted after the event has ended, and a single volunteer can only rate each event
+    once. If the rating was accepted, a 200 status is returned, else a 400 status and an error message is returned.
+    """
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def post(self, req, *args, **kwards):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            volunteer = Volunteer.objects.get(end_user__id=self.get_user_id(req))
+            try:
+                event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Event " + str(self.kwargs['event_id']) + " does not exists."}
+                                , status=status.HTTP_400_BAD_REQUEST)
+            body = json.loads(str(req.body, encoding='utf-8'))
+            rating = int(body['rating'])
+            if volunteer in event.volunteers.all():
+                if 0 < rating < 6:
+                    if event.end_time < timezone.now():
+                        if Rating.objects.filter(volunteer=volunteer, event__id=event.id).count() == 0:
+                            organization = event.organization
+                            new_rating = ((organization.rating * organization.raters) + rating) / (
+                                        organization.raters + 1)
+                            organization.raters += 1
+                            organization.rating = round(new_rating, 2)
+                            organization.save()
+
+                            Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
+                            return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
+                        else:
+                            return Response(data={"Error": "This volunteer has already rated this event"},
+                                            status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        return Response(data={"Error": "This event has not ended yet, "
+                                                       "events can only rated after they have finished."},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response(data={"Error": "Rating must be between 1 and 5, inclusive"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(data={"Error": "Requesting volunteer not registered for this event, "
+                                               "volunteers must be signed up for an event to rate it"},
+                                status=status.HTTP_400_BAD_REQUEST)
+        return AuthCheck.unauthorized_response()
+
+
 class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
     """
     Class view for volunteers to signup for events
@@ -399,12 +473,10 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
             if volunteer in current_event.volunteers.all():
                 current_event.volunteers.remove(vol_id)
-                current_event.save()
                 return Response(data={"Success": "Volunteer has been removed from event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
             else:
                 current_event.volunteers.add(vol_id)
-                current_event.save()
                 return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
 
@@ -479,7 +551,7 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
                     event.title = body['title']
                     event.location = body['location']
                     event.description = body['description']
-                    event.save()
+                    event.save(update_fields=diffs)
                 return Response(status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -537,6 +609,7 @@ class InviteVolunteersAPIView(generics.GenericAPIView):
     View to generate an invite code for an event. GET will return an invite code for this event and POST will email
     the provided emails a link to signup for this event
     """
+
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 
