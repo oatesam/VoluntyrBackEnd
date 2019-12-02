@@ -1,6 +1,7 @@
 import json
 import sys
 import time
+import math
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -21,6 +22,7 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
 from .urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
+
 
 class AuthCheck:
     # TODO add getVolunteerID
@@ -241,7 +243,7 @@ class VolunteerUnratedEventsAPIView(generics.ListAPIView, AuthCheck):
         user_id = AuthCheck.get_user_id(req)
         volunteer = Volunteer.objects.get(end_user_id=user_id)
         rated_events = Rating.objects.filter(Q(volunteer=volunteer)).values('event')
-        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__lt=timezone.now()))\
+        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__lt=timezone.now())) \
             .exclude(id__in=rated_events)
 
     def list(self, req, *args, **kwargs):
@@ -400,19 +402,35 @@ class RateEventAPIView(generics.GenericAPIView, AuthCheck):
     def post(self, req, *args, **kwards):
         if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
             volunteer = Volunteer.objects.get(end_user__id=self.get_user_id(req))
-            event = self.get_object()
+            try:
+                event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Event " + str(self.kwargs['event_id']) + " does not exists."})
             body = json.loads(str(req.body, encoding='utf-8'))
             rating = int(body['rating'])
-            if 0 < rating < 6 and event.end_time < timezone.now():
-                organization = event.organization
-                new_rating = ((organization.rating * organization.raters) + rating) / (organization.raters + 1)
-                organization.raters += 1
-                organization.rating = new_rating
-                organization.save()
+            if volunteer in event.volunteers.all():
+                if 0 < rating < 6 and event.end_time < timezone.now():
+                    organization = event.organization
+                    new_rating = ((organization.rating * organization.raters) + rating) / (organization.raters + 1)
+                    organization.raters += 1
+                    organization.rating = round(new_rating, 2)
+                    organization.save()
 
-                Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
-                return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
-            return AuthCheck.unauthorized_response()
+                    Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
+                    return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
+                else:
+                    if rating < 1 or rating > 5:
+                        return Response(data={"Error": "Rating must be between 1 and 5, inclusive"},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        return Response(data={"Error": "This event has not ended yet, "
+                                                       "events can only rated after they have finished."},
+                                        status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(data={"Error": "Requesting volunteer not registered for this event, "
+                                               "volunteers must be signed up for an event to rate it"})
+        return AuthCheck.unauthorized_response()
+
 
 class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
     """
@@ -579,6 +597,7 @@ class InviteVolunteersAPIView(generics.GenericAPIView):
     View to generate an invite code for an event. GET will return an invite code for this event and POST will email
     the provided emails a link to signup for this event
     """
+
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 
