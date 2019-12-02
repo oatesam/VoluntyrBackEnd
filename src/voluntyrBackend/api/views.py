@@ -364,7 +364,7 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
 
     def get_queryset(self):
         """
-        default return events that hasn't happend yet
+        default return events that hasn't happened yet
         check filter before final default return
         """
         queryset = Event.objects.all()
@@ -396,6 +396,13 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
 
 
 class RateEventAPIView(generics.GenericAPIView, AuthCheck):
+    """
+    Class View to submit ratings for completed events.
+
+    The requesting user must be a volunteer who was signed up for the event, the rating must be between 1 and 5,
+    inclusive, the rating must be submitted after the event has ended, and a single volunteer can only rate each event
+    once. If the rating was accepted, a 200 status is returned, else a 400 status and an error message is returned.
+    """
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 
@@ -405,30 +412,37 @@ class RateEventAPIView(generics.GenericAPIView, AuthCheck):
             try:
                 event = self.get_object()
             except ObjectDoesNotExist:
-                return Response(data={"Error": "Event " + str(self.kwargs['event_id']) + " does not exists."})
+                return Response(data={"Error": "Event " + str(self.kwargs['event_id']) + " does not exists."}
+                                , status=status.HTTP_400_BAD_REQUEST)
             body = json.loads(str(req.body, encoding='utf-8'))
             rating = int(body['rating'])
             if volunteer in event.volunteers.all():
-                if 0 < rating < 6 and event.end_time < timezone.now():
-                    organization = event.organization
-                    new_rating = ((organization.rating * organization.raters) + rating) / (organization.raters + 1)
-                    organization.raters += 1
-                    organization.rating = round(new_rating, 2)
-                    organization.save()
+                if 0 < rating < 6:
+                    if event.end_time < timezone.now():
+                        if Rating.objects.filter(volunteer=volunteer, event__id=event.id).count() == 0:
+                            organization = event.organization
+                            new_rating = ((organization.rating * organization.raters) + rating) / (
+                                        organization.raters + 1)
+                            organization.raters += 1
+                            organization.rating = round(new_rating, 2)
+                            organization.save()
 
-                    Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
-                    return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
-                else:
-                    if rating < 1 or rating > 5:
-                        return Response(data={"Error": "Rating must be between 1 and 5, inclusive"},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                            Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
+                            return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
+                        else:
+                            return Response(data={"Error": "This volunteer has already rated this event"},
+                                            status=status.HTTP_400_BAD_REQUEST)
                     else:
                         return Response(data={"Error": "This event has not ended yet, "
                                                        "events can only rated after they have finished."},
                                         status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response(data={"Error": "Rating must be between 1 and 5, inclusive"},
+                                    status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response(data={"Error": "Requesting volunteer not registered for this event, "
-                                               "volunteers must be signed up for an event to rate it"})
+                                               "volunteers must be signed up for an event to rate it"},
+                                status=status.HTTP_400_BAD_REQUEST)
         return AuthCheck.unauthorized_response()
 
 
@@ -459,12 +473,10 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
             if volunteer in current_event.volunteers.all():
                 current_event.volunteers.remove(vol_id)
-                current_event.save()
                 return Response(data={"Success": "Volunteer has been removed from event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
             else:
                 current_event.volunteers.add(vol_id)
-                current_event.save()
                 return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
 
@@ -539,7 +551,7 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
                     event.title = body['title']
                     event.location = body['location']
                     event.description = body['description']
-                    event.save()
+                    event.save(update_fields=diffs)
                 return Response(status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
