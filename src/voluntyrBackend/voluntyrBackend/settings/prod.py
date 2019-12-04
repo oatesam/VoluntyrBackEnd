@@ -43,12 +43,13 @@ REST_FRAMEWORK = {
 }
 
 # TODO story-57: Add heroku redis resource
-CHANNEL_LAYERS = {
-    "default": {
-            "BACKEND": "asgi_redis.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": ['redis://localhost:6379'],
-            },
-            "ROUTING": "chat.routing.channel_routing",
-        },
-}
+# Deployment Docs: https://channels.readthedocs.io/en/latest/deploying.html
+# CHANNEL_LAYERS = {
+#     "default": {
+#             "BACKEND": "asgi_redis.RedisChannelLayer",
+#             "CONFIG": {
+#                 "hosts": ['redis://localhost:6379'],
+#             },
+#             "ROUTING": "chat.routing.channel_routing",
+#         },
+# }
