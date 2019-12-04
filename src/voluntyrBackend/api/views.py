@@ -9,6 +9,7 @@ from django.core.mail import send_mass_mail
 from django.db import IntegrityError
 from django.db.models import Q
 from django.utils import timezone
+from .signals import signal_volunteer_signed_up_event
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
@@ -477,6 +478,7 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                                 status=status.HTTP_202_ACCEPTED)
             else:
                 current_event.volunteers.add(vol_id)
+                signal_volunteer_signed_up_event.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'], volunteer=volunteer)
                 return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
 

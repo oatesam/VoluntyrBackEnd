@@ -2,8 +2,29 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
 from django.core.mail import send_mass_mail
+from django.core.mail import send_mail
+import django.dispatch
+from django.utils import timezone
+from .urlTokens.token import URLToken
 
 from .models import Event
+# create custom signal for when volunteer sign up for event
+signal_volunteer_signed_up_event = django.dispatch.Signal(providing_args=["vol_id", "event_id"])
+
+
+@receiver(signal_volunteer_signed_up_event)
+def volunteer_signed_up_event_handler(sender, **kwargs):
+    vol_id = kwargs["vol_id"]
+    event_id = kwargs["event_id"]
+    volunteer = kwargs["volunteer"]
+    suggesting_events = _make_suggest_events_list(vol_id, event_id, volunteer)
+    if len(suggesting_events) == 0:
+        return
+    email = volunteer.end_user.email
+    subject = "Check Out Other Fun Events on Voluntyr"
+    message = generate_suggestion_email_message(suggesting_events, email, event_id)
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, email)
+    print("look here asd", vol_id, event_id)
 
 
 @receiver(post_save, sender=Event)
@@ -42,3 +63,42 @@ def _make_emails(to_emails, from_email, subject, message):
     for volunteer in to_emails:
         emails.append((subject, message, from_email, [volunteer]))
     return tuple(emails)
+
+
+def _make_suggest_events_list(vol_id, event_id, volunteer):
+    event_lst = []
+    current_event = Event.objects.get(id=event_id)
+    events = Event.objects.all().filter(start_time__gte=timezone.now())
+    for event in events:
+        if event.organization == current_event.organization and volunteer not in event.volunteers.all():
+            event_lst.append(event)
+    if len(event_lst) == 0:
+        for event in events:
+            if volunteer not in event.volunteers.all():
+                event_lst.append(event)
+    if len(event_lst) > 3:
+        event_lst = event_lst[:3]
+    return event_lst
+
+
+def generate_suggestion_email_message(suggesting_events, email, event_id):
+    current_event = Event.objects.get(id=event_id)
+    message = "You are receiving this message because you are registered for " + current_event.title +\
+              " organized by " + current_event.organization + ". We have found some other volunteer opportunity"\
+              " that you may be interested in."
+    for event in suggesting_events:
+        token = _generate_invite_code(event.id)
+        message += "\n\n" +\
+                   event.title + " organized by " + event.organization + " at " + event.location +\
+                   " on " + event.start_time + "\n" + " Here is the description of the event: " +\
+                   event.description + "\n" + "If you are interested, you can register by clicking"\
+                   " the invitation link below \n" + settings.FRONTEND_HOST+"/invite/"+token
+    return message
+
+
+def _generate_invite_code(self, event_id):
+    token = URLToken(data={"event_id": event_id})
+    return token.get_token()
+
+
+
