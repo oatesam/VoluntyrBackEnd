@@ -20,6 +20,8 @@ DEBUG = (os.environ.get('VOL_DEBUG') == 'True')
 
 # Application definition
 
+ASGI_APPLICATION = 'voluntyrBackend.routing.application'
+
 AUTH_USER_MODEL = 'api.EndUser'
 
 INSTALLED_APPS = [
