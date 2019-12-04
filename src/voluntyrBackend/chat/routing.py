@@ -1,1 +1,1 @@
-channel_routing = {}
+chat_application = {}
