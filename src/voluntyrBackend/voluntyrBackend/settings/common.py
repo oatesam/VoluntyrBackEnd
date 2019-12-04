@@ -24,14 +24,16 @@ AUTH_USER_MODEL = 'api.EndUser'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
-    'api',
-    'rest_framework',
-    'corsheaders',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'api',
+    'chat',
+    'rest_framework',
+    'corsheaders',
+    'channels'
 ]
 
 MIDDLEWARE = [

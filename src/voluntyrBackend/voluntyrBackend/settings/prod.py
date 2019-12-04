@@ -41,3 +41,14 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+# TODO story-57: Add heroku redis resource
+CHANNEL_LAYERS = {
+    "default": {
+            "BACKEND": "asgi_redis.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": ['redis://localhost:6379'],
+            },
+            "ROUTING": "chat.routing.channel_routing",
+        },
+}
