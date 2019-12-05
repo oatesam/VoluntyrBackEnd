@@ -1,9 +1,11 @@
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
-from voluntyr.chat import routing as chat
+
+from chat import routing
 
 application = ProtocolTypeRouter({
-    'websocket': URLRouter(
-            chat.websocket_urlpatterns
-        )
+    'websocket': AuthMiddlewareStack(
+        URLRouter(
+            routing.websocket_urlpatterns
+        )),
 })
