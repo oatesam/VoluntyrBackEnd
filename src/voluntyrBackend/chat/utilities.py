@@ -1,8 +1,8 @@
 # TODO story-57: Delete if unused
 from channels.db import database_sync_to_async
 
-from .exceptions import ClientError
-from .models import Room
+from chat.exceptions import ClientError
+from chat.models import Room
 
 
 @database_sync_to_async
