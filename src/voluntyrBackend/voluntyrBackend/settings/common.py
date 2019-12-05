@@ -20,8 +20,6 @@ DEBUG = (os.environ.get('VOL_DEBUG') == 'True')
 
 # Application definition
 
-ASGI_APPLICATION = 'voluntyrBackend.routing.application'
-
 AUTH_USER_MODEL = 'api.EndUser'
 
 INSTALLED_APPS = [
@@ -124,3 +122,5 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+ASGI_APPLICATION = 'voluntyrBackend.routing.application'
