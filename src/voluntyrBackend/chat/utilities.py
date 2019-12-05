@@ -3,7 +3,6 @@ from channels.db import database_sync_to_async
 
 from .exceptions import ClientError
 from .models import Room
-from ..api.views import AuthCheck
 
 
 @database_sync_to_async
