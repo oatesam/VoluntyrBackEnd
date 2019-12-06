@@ -3,7 +3,7 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenObtainSerializer
 
-from .models import Event, Volunteer, Organization, EndUser
+from api.models import Event, Volunteer, Organization, EndUser
 
 
 
