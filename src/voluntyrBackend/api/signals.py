@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.conf import settings
 from django.core.mail import send_mass_mail
 
-from .models import Event
+from api.models import Event
 
 
 @receiver(post_save, sender=Event)

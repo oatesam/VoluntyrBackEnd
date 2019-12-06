@@ -10,9 +10,9 @@ from django.utils import timezone
 from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .models import Event, Organization, EndUser
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
-from .urlTokens.token import URLToken
+from api.models import Event, Organization, EndUser
+from api.views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
+from api.urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
@@ -553,23 +553,17 @@ class InviteTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'start_time': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=1, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'start_time': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=2, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
@@ -735,23 +729,17 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'start_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=1, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=1)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'start_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=2, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=2)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
@@ -848,6 +836,8 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             e = expected[i]
             e['id'] = i + 1
             e['organization'] = 1
+            e['start_time'] = e['start_time'][:-2] + ":" + e['start_time'][-2:]
+            e['end_time'] = e['end_time'][:-2] + ":" + e['end_time'][-2:]
             self.assertDictEqual(e, a, "Event dict did not match expected")
 
 
@@ -950,23 +940,17 @@ class EventEmailTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T'
-                          + str(hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T'
-                        + str(hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'start_time': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=1, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'start_time': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=2, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
