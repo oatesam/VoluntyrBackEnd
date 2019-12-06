@@ -1,12 +1,8 @@
-from authy.api import AuthyApiClient
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenObtainSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from api.models import Event, Volunteer, Organization, EndUser
-
-
-
 
 
 class EventsSerializer(serializers.ModelSerializer):
