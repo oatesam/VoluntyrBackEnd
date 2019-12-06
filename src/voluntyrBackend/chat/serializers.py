@@ -5,9 +5,9 @@ from chat.models import Room
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
-        fields = ['id', 'title']
+        fields = ['id', 'name']
 
-    title = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
 
-    def get_title(self, obj):
+    def get_name(self, obj):
         return obj.get_room_name()
