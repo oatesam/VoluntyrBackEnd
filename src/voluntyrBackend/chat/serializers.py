@@ -6,3 +6,8 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ['id', 'title']
+
+    title = serializers.SerializerMethodField()
+
+    def get_title(self, obj):
+        return obj.get_room_name()

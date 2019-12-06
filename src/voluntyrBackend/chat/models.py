@@ -6,8 +6,13 @@ from api.models import Event
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     members = models.ManyToManyField('api.EndUser', through="Membership")
-    event = models.ForeignKey(Event, on_delete=models.PROTECT, blank=True, null=True)
-    title = models.SlugField()
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, null=True, default=None)
+
+    def get_room_name(self):
+        if self.event is None:
+            return "Private Chat Room"
+        else:
+            return "Event Chat Room for " + self.event.title
 
 
 class Membership(models.Model):
