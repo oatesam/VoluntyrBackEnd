@@ -6,15 +6,12 @@ from api.signals import signal_volunteer_event_registration
 from chat.models import Room, Membership
 from chat.utilities import get_room_or_error
 
-EVENT_ROOM_BASE_TITLE = "Event Chat Room for "
-
 
 @receiver(post_save, sender=Event)
 def new_event_receiver(sender, **kwargs):
     if kwargs['created']:
         event = kwargs['instance']
-        title = EVENT_ROOM_BASE_TITLE + event.title
-        room = Room.objects.create(title=title, event=event)
+        room = Room.objects.create(event=event)
         Membership.objects.create(end_user=event.organization.end_user, room=room)
 
 

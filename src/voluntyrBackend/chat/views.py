@@ -21,7 +21,7 @@ class ListRoomsAPIView(generics.ListCreateAPIView, AuthCheck):
         user2 = EndUser.objects.get(email=request.data['email'])
 
         if user1 != user2:
-            room = Room.objects.create(title="Private Chat Room")
+            room = Room.objects.create()
             Membership.objects.create(end_user=user1, room=room)
             Membership.objects.create(end_user=user2, room=room)
             return Response(data={"room": str(room.id)}, status=status.HTTP_201_CREATED)

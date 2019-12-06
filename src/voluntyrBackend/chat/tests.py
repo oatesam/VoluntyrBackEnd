@@ -118,6 +118,7 @@ class RoomTests(TestCase, Utilities):
         room = Room.objects.get(id=content['room'])
         members = room.members.all()
         self.assertEqual(members.count(), 2)
+        self._assert_private_chat_room(room)
         self.assertIn(EndUser.objects.get(email=user1['email']), members)
         self.assertIn(EndUser.objects.get(email=user2['email']), members)
         self.assertNotIn(EndUser.objects.get(email=user3['email']), members)
@@ -131,10 +132,12 @@ class RoomTests(TestCase, Utilities):
 
         actual_room = self.get_chat_rooms(self.organization_tokens['access'])[0]
 
-        room = Room.objects.get(title="Event Chat Room for " + self.event_dict['title'])
-        expected_room = {'id': str(room.id), 'title': room.title}
+        room = Room.objects.get(event__id=1)
+        self.assertEqual(room.get_room_name(), "Event Chat Room for " + self.event_dict['title'])
+        self.assertEqual(room.members.all().count(), 1)
 
-        self.assertDictEqual(actual_room, expected_room)
+        expected_room_dict = {'id': str(room.id), 'title': room.get_room_name()}
+        self.assertDictEqual(actual_room, expected_room_dict)
 
     def test_edit_event_name(self):
         self.fail("If an event is changed, its room name should also be changed")
@@ -145,13 +148,13 @@ class RoomTests(TestCase, Utilities):
         path = "http://testserver/chat/rooms/"
         end_user = EndUser.objects.get(id=1)
 
-        self.room1 = Room.objects.create(title="TestRoom 1")
+        self.room1 = Room.objects.create()
         Membership.objects.create(end_user=end_user, room=self.room1)
 
-        self.room2 = Room.objects.create(title="TestRoom 2")
+        self.room2 = Room.objects.create()
         Membership.objects.create(end_user=end_user, room=self.room2)
 
-        self.room3 = Room.objects.create(title="TestRoom 3")
+        self.room3 = Room.objects.create()
 
         self.failIf(self.organization_tokens is None or len(self.organization_tokens.keys()) != 2,
                     msg="Org Tokens Dict: " + str(self.organization_tokens.keys()))
@@ -163,11 +166,11 @@ class RoomTests(TestCase, Utilities):
 
         expected = [
             {
-                "title": "TestRoom 1",
+                "title": "Private Chat Room",
                 "id": str(self.room1.id)
             },
             {
-                "title": "TestRoom 2",
+                "title": "Private Chat Room",
                 "id": str(self.room2.id)
             }
         ]
@@ -178,54 +181,58 @@ class RoomTests(TestCase, Utilities):
         volunteer = self.volunteerDicts[0]
         volunteer_token = self.volunteerTokens[0]['access']
 
-        self._assert_volunteer_not_in_room(volunteer['email'], self.event_dict['title'])
-        self._assert_room_member_count(self.event_dict['title'], 1)
+        self._assert_volunteer_not_in_room(volunteer['email'], 1)
+        self._assert_room_member_count(1, 1)
         self.volunteer_signup_for_event(volunteer_token, 1)
-        self._assert_volunteer_in_room(volunteer['email'], self.event_dict['title'])
-        self._assert_room_member_count(self.event_dict['title'], 2)
-        self._assert_volunteer_not_in_room(self.volunteerDicts[1]['email'], self.event_dict['title'])
-        self._assert_volunteer_not_in_room(self.volunteerDicts[2]['email'], self.event_dict['title'])
+        self._assert_volunteer_in_room(volunteer['email'], 1)
+        self._assert_room_member_count(1, 2)
+        self._assert_volunteer_not_in_room(self.volunteerDicts[1]['email'], 1)
+        self._assert_volunteer_not_in_room(self.volunteerDicts[2]['email'], 1)
 
         volunteer = self.volunteerDicts[1]
         volunteer_token = self.volunteerTokens[1]['access']
 
-        self._assert_volunteer_not_in_room(volunteer['email'], self.event_dict['title'])
+        self._assert_volunteer_not_in_room(volunteer['email'], 1)
         self.volunteer_signup_for_event(volunteer_token, 1)
-        self._assert_volunteer_in_room(volunteer['email'], self.event_dict['title'])
-        self._assert_room_member_count(self.event_dict['title'], 3)
-        self._assert_volunteer_in_room(self.volunteerDicts[0]['email'], self.event_dict['title'])
-        self._assert_volunteer_not_in_room(self.volunteerDicts[2]['email'], self.event_dict['title'])
+        self._assert_volunteer_in_room(volunteer['email'], 1)
+        self._assert_room_member_count(1, 3)
+        self._assert_volunteer_in_room(self.volunteerDicts[0]['email'], 1)
+        self._assert_volunteer_not_in_room(self.volunteerDicts[2]['email'], 1)
 
         volunteer = self.volunteerDicts[0]
         volunteer_token = self.volunteerTokens[0]['access']
 
-        self._assert_volunteer_in_room(volunteer['email'], self.event_dict['title'])
+        self._assert_volunteer_in_room(volunteer['email'], 1)
         self.volunteer_signup_for_event(volunteer_token, 1, unregisting=True)
-        self._assert_room_member_count(self.event_dict['title'], 3)
-        self._assert_volunteer_not_attending(volunteer['email'], self.event_dict['title'])
-        self._assert_volunteer_in_room(self.organization_dict['email'], self.event_dict['title'])
-        self._assert_volunteer_in_room(self.volunteerDicts[1]['email'], self.event_dict['title'])
-        self._assert_volunteer_not_in_room(self.volunteerDicts[2]['email'], self.event_dict['title'])
+        self._assert_room_member_count(1, 3)
+        self._assert_volunteer_not_attending(volunteer['email'], 1)
+        self._assert_volunteer_in_room(self.organization_dict['email'], 1)
+        self._assert_volunteer_in_room(self.volunteerDicts[1]['email'], 1)
+        self._assert_volunteer_not_in_room(self.volunteerDicts[2]['email'], 1)
 
-    def _assert_room_member_count(self, event_title, expected):
-        room = Room.objects.get(title="Event Chat Room for " + event_title)
+    def _assert_room_member_count(self, event_id, expected):
+        room = Room.objects.get(event__id=event_id)
         self.assertEqual(room.members.all().count(), expected)
 
-    def _assert_volunteer_not_in_room(self, email, event_title):
+    def _assert_volunteer_not_in_room(self, email, event_id):
         end_user = EndUser.objects.get(email=email)
-        room = Room.objects.get(title="Event Chat Room for " + event_title)
+        room = Room.objects.get(event__id=event_id)
         self.assertNotIn(end_user, room.members.all())
 
-    def _assert_volunteer_not_attending(self, email, event_title):
-        room = Room.objects.get(title="Event Chat Room for " + event_title)
+    def _assert_volunteer_not_attending(self, email, event_id):
+        room = Room.objects.get(event__id=event_id)
         self.failIf(Membership.objects.filter(end_user__email=email, room=room).count() == 0)
         self.assertFalse(Membership.objects.get(end_user__email=email, room=room).attending)
 
-    def _assert_volunteer_in_room(self, email, event_title):
+    def _assert_volunteer_in_room(self, email, event_id):
         end_user = EndUser.objects.get(email=email)
-        room = Room.objects.get(title="Event Chat Room for " + event_title)
+        room = Room.objects.get(event__id=event_id)
         self.assertIn(end_user, room.members.all())
         self.assertTrue(Membership.objects.get(end_user=end_user, room=room).attending)
+
+    def _assert_private_chat_room(self, room):
+        self.assertIsNone(room.event)
+        self.assertEqual(room.get_room_name(), "Private Chat Room")
 
 
 class ChatTests(TestCase, tests.Utilities):
