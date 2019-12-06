@@ -120,10 +120,17 @@ class Utilities:
         client = RequestsClient()
         client.headers.update({'Authorization': 'Bearer ' + token})
         path = "http://testserver/api/event/%d/volunteer/" % event_id
-
+        expected_subject = "Thank you for registering to volunteer with "
+        expected_contained_message = "Thank you for registering for "
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
-        self.assertEqual(pre_signup_outbox_len, len(mail.outbox), "An email was sent after signing up for an event.")
+        self.assertEqual(pre_signup_outbox_len + 1, len(mail.outbox),
+                         "The outbox length after registering for an event was not the expected length. Diff from "
+                         "actual to expected: %d" % (
+                                 len(mail.outbox) - (pre_signup_outbox_len + 1)))
+        for email in mail.outbox:
+            self.assertIn(expected_subject, email.subject)
+            self.assertIn(expected_contained_message, email.body)
 
 
 class RatingTest(TestCase, Utilities):
