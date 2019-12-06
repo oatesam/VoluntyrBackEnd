@@ -529,7 +529,7 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         """
-        POST endpoint to update an existing event
+        PUT endpoint to update an existing event
         """
         if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             try:
