@@ -110,7 +110,7 @@ class Utilities:
         response = client.post(path, json=event_dict)
         self.assertEqual(response.status_code, 201, "Utility: Failed to create new event.\n\n" + str(event_dict))
 
-    def volunteer_signup_for_event(self, token, event_id):
+    def volunteer_signup_for_event(self, token, event_id, unregisting=False):
         """
         Utility function for volunteers to signup for events
         :param token: Volunteer token
@@ -124,13 +124,17 @@ class Utilities:
         expected_contained_message = "Thank you for registering for "
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
-        self.assertEqual(pre_signup_outbox_len + 1, len(mail.outbox),
-                         "The outbox length after registering for an event was not the expected length. Diff from "
-                         "actual to expected: %d" % (
-                                 len(mail.outbox) - (pre_signup_outbox_len + 1)))
-        for email in mail.outbox:
-            self.assertIn(expected_subject, email.subject)
-            self.assertIn(expected_contained_message, email.body)
+
+        if unregisting:
+            self.assertEqual(pre_signup_outbox_len, len(mail.outbox), "An email was sent.")
+        else:
+            self.assertEqual(pre_signup_outbox_len + 1, len(mail.outbox),
+                             "The outbox length after registering for an event was not the expected length. Diff from "
+                             "actual to expected: %d" % (
+                                     len(mail.outbox) - (pre_signup_outbox_len + 1)))
+            for email in mail.outbox:
+                self.assertIn(expected_subject, email.subject)
+                self.assertIn(expected_contained_message, email.body)
 
 
 class RatingTest(TestCase, Utilities):
@@ -1417,10 +1421,11 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         path = "http://testserver/api/event/%d/volunteer/" % self.eventId
 
         data_response = client.put(path)
-        content = json.loads(data_response.content)
-        status = data_response.status_code
 
+        status = data_response.status_code
         self.assertEqual(status, 202, msg="Volunteer event signup failed.")
+
+        content = json.loads(data_response.content)
         self.assertDictEqual(content, {"Success": "Volunteer has signed up for event %d" % self.eventId})
         self.confirm_signup(self.eventId)
 
