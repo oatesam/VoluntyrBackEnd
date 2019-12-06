@@ -15,12 +15,14 @@ class URLToken:
     To get the data from a token, pass the token into the constructor. Then check is_valid()
     and call get_data() if the token is valid. If the token is not valid, it is either expired or doesn't sign properly
     """
-    def __init__(self, token=None, data=None, lifetime=settings.INVITE_LINK_LIFETIME):
+    def __init__(self, token=None, data=None, lifetime=settings.INVITE_LINK_LIFETIME, enc="ascii"):
         """
         :param token: str; existing token code
         :param data: dict with data to encode into this token code
         :param lifetime: How long should the token be valid, default is settings.INVITE_LINK_LIFETIME
+        :param enc: The encoding method
         """
+        self.enc = enc
         if token is None:
             self._data = data
             self._lifetime = lifetime
@@ -32,16 +34,16 @@ class URLToken:
     def _encode(self, data):
         self._valid = True
         raw_data = {"data": data, "expires": (datetime.datetime.now() + self._lifetime).__str__()}
-        compressed_data = base64.b64encode(str(raw_data).encode("utf-8"))
+        compressed_data = base64.b16encode(str(raw_data).encode(self.enc))
         h = hashlib.md5(settings.SECRET_KEY.encode() + compressed_data).hexdigest()[:16]
-        return str(h) + "_" + compressed_data.decode("utf-8")
+        return str(h) + "_" + compressed_data.decode(self.enc)
 
     def _decode(self, token):
         actual_hash, compressed_data = str(token).split("_", maxsplit=1)
         expected_hash = hashlib.md5(settings.SECRET_KEY.encode() + compressed_data.encode()).hexdigest()[:16]
 
         if expected_hash == actual_hash:
-            raw_data = json.loads(base64.b64decode(compressed_data).decode('utf-8').replace('\'', "\""))
+            raw_data = json.loads(base64.b16decode(compressed_data).decode(self.enc).replace('\'', "\""))
             data = raw_data['data']
             expires = datetime.datetime.strptime(raw_data['expires'], "%Y-%m-%d %H:%M:%S.%f")
             if datetime.datetime.now() < expires:

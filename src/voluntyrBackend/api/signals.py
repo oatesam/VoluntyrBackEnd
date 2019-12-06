@@ -16,15 +16,13 @@ signal_volunteer_signed_up_event = django.dispatch.Signal(providing_args=["vol_i
 def volunteer_signed_up_event_handler(sender, **kwargs):
     vol_id = kwargs["vol_id"]
     event_id = kwargs["event_id"]
+    event = Event.objects.get(id=event_id)
     volunteer = kwargs["volunteer"]
     suggesting_events = _make_suggest_events_list(vol_id, event_id, volunteer)
-    if len(suggesting_events) == 0:
-        return
-    email = volunteer.end_user.email
-    subject = "Check Out Other Fun Events on Voluntyr"
+    email = [volunteer.end_user.email]
+    subject = "Thank you for registering to volunteer with " + event.organization.name
     message = generate_suggestion_email_message(suggesting_events, email, event_id)
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, email)
-    print("look here asd", vol_id, event_id)
 
 
 @receiver(post_save, sender=Event)
@@ -72,7 +70,7 @@ def _make_suggest_events_list(vol_id, event_id, volunteer):
     for event in events:
         if event.organization == current_event.organization and volunteer not in event.volunteers.all():
             event_lst.append(event)
-    if len(event_lst) == 0:
+    if len(event_lst) < 3:
         for event in events:
             if volunteer not in event.volunteers.all():
                 event_lst.append(event)
@@ -83,20 +81,25 @@ def _make_suggest_events_list(vol_id, event_id, volunteer):
 
 def generate_suggestion_email_message(suggesting_events, email, event_id):
     current_event = Event.objects.get(id=event_id)
-    message = "You are receiving this message because you are registered for " + current_event.title +\
-              " organized by " + current_event.organization + ". We have found some other volunteer opportunity"\
-              " that you may be interested in."
-    for event in suggesting_events:
-        token = _generate_invite_code(event.id)
-        message += "\n\n" +\
-                   event.title + " organized by " + event.organization + " at " + event.location +\
-                   " on " + event.start_time + "\n" + " Here is the description of the event: " +\
-                   event.description + "\n" + "If you are interested, you can register by clicking"\
-                   " the invitation link below \n" + settings.FRONTEND_HOST+"/invite/"+token
+    message = "Thank you for registering for " + str(current_event.title) +\
+              " organized by " + str(current_event.organization)
+    if len(suggesting_events) > 0:
+        message += "\n\nWe have found " + str(len(suggesting_events)) + " other volunteer opportunities that you may " \
+                                                                        "be interested in: "
+        for event in suggesting_events:
+            token = _generate_invite_code(event_id=event.id)
+            message += "\n" +\
+                       str(event.title) + " at " + str(event.location) + " organized by " + str(event.organization) \
+                       + ".\n"\
+                       "The event starts on " + event.start_time.strftime("%m/%d/%Y %I:%M %p") + " and end on "\
+                       + event.end_time.strftime("%m/%d/%Y %I:%M %p") + "\n" \
+                       "Here is the description of the event: " + str(event.description) + "\n" \
+                       "If you are interested, you can register by clicking"\
+                       " the invitation link below: \n" + settings.FRONTEND_HOST+"/Invite/"+token
     return message
 
 
-def _generate_invite_code(self, event_id):
+def _generate_invite_code(event_id):
     token = URLToken(data={"event_id": event_id})
     return token.get_token()
 
