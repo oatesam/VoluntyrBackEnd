@@ -5,13 +5,18 @@ from chat.exceptions import ClientError
 from chat.models import Room
 
 
-@database_sync_to_async
-def get_room_or_error(room_id):
+def get_room_or_error(id=None, event=None):
     """
     Tries to get the requested a room
     """
+    if id is None and event is None:
+        raise ValueError("id and event cannot both be None!")
+
     try:
-        room = Room.objects.get(id=room_id)
+        if id is not None:
+            room = Room.objects.get(id=id)
+        else:
+            room = Room.objects.get(event=event)
     except Room.DoesNotExist:
         raise ClientError("Room not found.")
 

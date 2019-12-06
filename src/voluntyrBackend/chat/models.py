@@ -1,10 +1,12 @@
 import uuid
 from django.db import models
+from api.models import Event
 
 
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     members = models.ManyToManyField('api.EndUser', through="Membership")
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, blank=True, null=True)
     title = models.SlugField()
 
 
@@ -12,6 +14,7 @@ class Membership(models.Model):
     end_user = models.ForeignKey('api.EndUser', on_delete=models.PROTECT)
     room = models.ForeignKey(Room, on_delete=models.PROTECT)
     online = models.BooleanField(default=False)
+    attending = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
 
 
