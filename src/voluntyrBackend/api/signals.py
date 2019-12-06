@@ -7,7 +7,7 @@ import django.dispatch
 from django.utils import timezone
 from .urlTokens.token import URLToken
 
-from .models import Event
+from api.models import Event
 # create custom signal for when volunteer sign up for event
 signal_volunteer_signed_up_event = django.dispatch.Signal(providing_args=["vol_id", "event_id"])
 
