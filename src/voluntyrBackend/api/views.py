@@ -26,8 +26,6 @@ authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
 
 class AuthCheck:
-    # TODO add getVolunteerID
-    # TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
