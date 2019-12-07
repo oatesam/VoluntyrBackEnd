@@ -176,13 +176,7 @@ class ResetPasswordView(generics.CreateAPIView):
         # set_password also hashes the password that the user will get
         end_user.set_password(body['password'])
         end_user.save()
-        response = {
-            'status': 'success',
-            'code': status.HTTP_200_OK,
-            'message': 'Password updated successfully',
-            'data': []
-        }
-        return Response(response)
+        return Response(data={"Success": "Password changed."}, status=status.HTTP_200_OK)
 
 
 class OrganizationEventsAPIView(generics.ListAPIView):
