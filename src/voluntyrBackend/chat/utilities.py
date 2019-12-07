@@ -1,6 +1,3 @@
-# TODO story-57: Delete if unused
-import json
-
 from channels.db import database_sync_to_async
 from chat.exceptions import ClientError
 from chat.models import Room
