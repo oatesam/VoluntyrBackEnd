@@ -1,11 +1,13 @@
-import json
-
 from asgiref.sync import async_to_sync
 
 from channels.generic.websocket import JsonWebsocketConsumer
 
 from api.models import EndUser
 from chat.models import Room, Membership, Message
+
+
+class RoomConsumer(JsonWebsocketConsumer):
+    pass
 
 
 class ChatConsumer(JsonWebsocketConsumer):
@@ -19,6 +21,7 @@ class ChatConsumer(JsonWebsocketConsumer):
 
     def connect(self):
         if self._is_authenticated():
+            print("Connection Authenticate!")
             self.user = EndUser.objects.get(id=self.scope['user_id'])
             self.username = self.user.email
 
@@ -31,6 +34,7 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.accept()
             self.send_json(make_server_message("success", self.rooms))
         else:
+            print("Failed to Connect: %s" % self.scope['auth_error'])
             self.accept()
             self.send_json(make_server_message("error", self.scope['auth_error']))
             self.close(code=4001)  # AuthError Code
@@ -74,19 +78,23 @@ class ChatConsumer(JsonWebsocketConsumer):
                     if 'room' in content.keys():
                         if Room.objects.filter(id=content['room']).count() > 0:
                             room = Room.objects.get(id=content['room'])
-                            try:
-                                Membership.objects.get(room=room, end_user=self.user)
-                                room = content['room']
-                                message = content['message']
-                                # TODO: add message to db - one entry for every other member in the room
+                            if 'message' in content.keys():
+                                try:
+                                    Membership.objects.get(room=room, end_user=self.user)
+                                    room = content['room']
+                                    message = content['message']
+                                    # TODO: add message to db - one entry for every other member in the room
 
-                                async_to_sync(self.channel_layer.group_send)(
-                                    room,
-                                    make_chat_message(self.username, room, message)
-                                )
-                                self.send_json(content=make_server_message("sent", "Test id"))
-                            except Membership.DoesNotExist:
-                                self.send_json(content=make_server_message("error", "You are not a member of this room."))
+                                    async_to_sync(self.channel_layer.group_send)(
+                                        room,
+                                        make_chat_message(self.username, room, message)
+                                    )
+                                    self.send_json(content=make_server_message("sent", "Test id"))
+                                except Membership.DoesNotExist:
+                                    self.send_json(
+                                        content=make_server_message("error", "You are not a member of this room."))
+                            else:
+                                self.send_json(content=make_server_message("error", "Missing message key"))
                         else:
                             self.send_json(content=make_server_message("error", "Room doesn't exist"))
                     else:
