@@ -5,9 +5,10 @@ import math
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import send_mass_mail
+from django.core.mail import send_mass_mail, send_mail
 from django.db import IntegrityError
 from django.db.models import Q
+from django.http import HttpRequest
 from django.utils import timezone
 from .signals import signal_volunteer_signed_up_event
 from rest_framework import generics, status
@@ -123,6 +124,59 @@ class ObtainDualAuthView(generics.GenericAPIView):
             return Response(data={'verified': 'true'}, status=status.HTTP_200_OK)
         else:
             return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class RecoverPasswordView(generics.CreateAPIView):
+    """
+    View to generate an recovery code for an event. GET will return a recovery code for this user and POST will email
+    the provided email a link to recover
+    """
+    def create(self, req, *args, **kwargs):
+        try:
+            body = json.loads(str(req.body, encoding='utf-8'))
+            end_user = EndUser.objects.get(email=body['email'])
+        except ObjectDoesNotExist:
+            return Response(data={"Error": "Given user does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = body['email']
+        url = body['url']
+        subject = "Voluntyr Password Recovery Link "
+        recover_code = self._generate_recover_code(end_user.id)
+        url_string = url + "/" + str(recover_code) + '/'
+        message = "You recently requested to reset your password for your Voluntyr account. Please follow the recovery link below to change your password. \n\n" + \
+                   "Recovery Link: \n" + url_string + \
+                   "\nIf you did not request a password reset, please ignore this email or reply to let us know." + "\n\n\n\n---------------------------------------------\n" \
+                  + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
+                   "Please contact us through our website instead, at voluntyr.com"
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+        print(message, file=sys.stderr)
+        return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
+
+    def _generate_recover_code(self, user_id):
+        token = URLToken(data={"user_id": user_id})
+        return token.get_token()
+
+
+class ResetPasswordView(generics.CreateAPIView):
+    """
+    An endpoint for changing password.
+    """
+    def create(self, request, *args, **kwargs):
+        try:
+            body = json.loads(str(request.body, encoding='utf-8'))
+            urlToken = body['user_id']
+            token = URLToken(token=urlToken)
+            user_id = token.get_data()['user_id']
+            end_user = EndUser.objects.get(id=user_id)
+        except ObjectDoesNotExist:
+            return Response(data={"error": "User with this id does not exist."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # set_password also hashes the password that the user will get
+        end_user.set_password(body['password'])
+        end_user.save()
+        return Response(data={"Success": "Password changed."}, status=status.HTTP_200_OK)
 
 
 class OrganizationEventsAPIView(generics.ListAPIView):
