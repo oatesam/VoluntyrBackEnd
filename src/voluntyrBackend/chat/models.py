@@ -28,20 +28,21 @@ class Message(models.Model):
     sender = models.ForeignKey('api.EndUser', on_delete=models.PROTECT, related_name="sender")
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
-    read = models.ManyToManyField('api.EndUser', through='ReadMembership', related_name="read")
-    delivered = models.ManyToManyField('api.EndUser', through='DeliveredMembership', related_name="delivered")
+    status = models.ManyToManyField('api.EndUser', through="StatusMembership")
 
 
 # https://docs.djangoproject.com/en/dev/topics/db/models/#extra-fields-on-many-to-many-relationships
-class ReadMembership(models.Model):
-    end_user = models.ForeignKey('api.EndUser', on_delete=models.PROTECT)
-    message = models.ForeignKey(Message, on_delete=models.PROTECT)
-    status = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+class StatusMembership(models.Model):
+    SENT = 'Sent'
+    DELIVERED = 'Delivered'
+    READ = 'Read'
+    MESSAGE_STATUS_CHOICES = [
+        (SENT, 'Sent'),
+        (DELIVERED, 'Delivered'),
+        (READ, 'Read')
+    ]
 
-
-class DeliveredMembership(models.Model):
-    end_user = models.ForeignKey('api.EndUser', on_delete=models.PROTECT)
-    message = models.ForeignKey(Message, on_delete=models.PROTECT)
-    status = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    end_user = models.ForeignKey('api.EndUser', on_delete=models.PROTECT, editable=False)
+    message = models.ForeignKey(Message, on_delete=models.PROTECT, editable=False)
+    status = models.CharField(choices=MESSAGE_STATUS_CHOICES, default=SENT, max_length=10)
+    timestamp = models.DateTimeField(auto_now=True, db_index=True)
