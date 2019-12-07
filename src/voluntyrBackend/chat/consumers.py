@@ -2,26 +2,10 @@ import json
 
 from asgiref.sync import async_to_sync
 
-from channels.generic.websocket import WebsocketConsumer, JsonWebsocketConsumer
+from channels.generic.websocket import JsonWebsocketConsumer
 
 from api.models import EndUser
 from chat.models import Room, Membership
-
-
-class ExampleConsumer(WebsocketConsumer):
-    def connect(self):
-        self.accept()
-
-    def disconnect(self, code):
-        pass
-
-    def receive(self, text_data=None, bytes_data=None):
-        if text_data is not None:
-            text_data_json = json.loads(text_data)
-            message = text_data_json['message']
-            self.send(text_data=json.dumps({
-                'message': message
-            }))
 
 
 class ChatConsumer(JsonWebsocketConsumer):
@@ -35,9 +19,6 @@ class ChatConsumer(JsonWebsocketConsumer):
 
     def connect(self):
         if self._is_authenticated():
-            # self.room_id = self.scope['url_route']['kwargs']['room_id']
-            # self.room_group_name = 'chat_%s' % str(self.room_id)
-
             self.user = EndUser.objects.get(id=self.scope['user_id'])
             self.username = self.user.email
 
@@ -51,10 +32,11 @@ class ChatConsumer(JsonWebsocketConsumer):
         else:
             self.accept()
             self.send_json(make_server_message("error", self.scope['auth_error']))
-            # self.close(code=4001)  # AuthError Code
+            self.close(code=4001)  # AuthError Code
 
     def disconnect(self, code):
         self._disconnect_from_rooms()
+        self.close()
 
     def _get_rooms(self):
         rooms = Room.objects.filter(membership__end_user=self.user).values_list('id', flat=True)
