@@ -5,6 +5,7 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer, JsonWebsocketConsumer
 
 from api.models import EndUser
+from chat.models import Room, Membership
 
 
 class ExampleConsumer(WebsocketConsumer):
@@ -30,38 +31,56 @@ class ChatConsumer(JsonWebsocketConsumer):
         self.room_group_name = None
         self.user = None
         self.username = None
+        self.rooms = []
 
     def connect(self):
         if self._is_authenticated():
-            self.room_id = self.scope['url_route']['kwargs']['room_id']
-            self.room_group_name = 'chat_%s' % str(self.room_id)
+            # self.room_id = self.scope['url_route']['kwargs']['room_id']
+            # self.room_group_name = 'chat_%s' % str(self.room_id)
 
             self.user = EndUser.objects.get(id=self.scope['user_id'])
             self.username = self.user.email
-            # TODO: Mark online, check if in room
-            async_to_sync(self.channel_layer.group_add)(
-                self.room_group_name,
-                self.channel_name
-            )
+
+            # TODO: Mark online
+
+            self._get_rooms()
+            self._connect_to_rooms()
 
             self.accept()
-            self.send_json(make_server_message("Success", "Joined room"))
+            self.send_json(make_server_message("success", self.rooms))
         else:
             self.accept()
-            self.send_json(make_error_message(self.scope['auth_error']))
+            self.send_json(make_server_message("error", self.scope['auth_error']))
             # self.close(code=4001)  # AuthError Code
 
     def disconnect(self, code):
-        async_to_sync(self.channel_layer.group_discard)(
-            self.room_group_name,
-            self.channel_name
-        )
+        self._disconnect_from_rooms()
+
+    def _get_rooms(self):
+        rooms = Room.objects.filter(membership__end_user=self.user).values_list('id', flat=True)
+        for room in rooms:
+            self.rooms.append(str(room))
+
+    def _connect_to_rooms(self):
+        for room in self.rooms:
+            async_to_sync(self.channel_layer.group_add)(
+                room,
+                self.channel_name
+            )
+
+    def _disconnect_from_rooms(self):
+        for room in self.rooms:
+            async_to_sync(self.channel_layer.group_discard)(
+                room,
+                self.channel_name
+            )
 
     def receive_json(self, content, **kwargs):
         """
         Example Message:
             {
                 "type": "chat_message",
+                "room": "uuid,
                 "message": "this is my message"
             }
         """
@@ -69,13 +88,25 @@ class ChatConsumer(JsonWebsocketConsumer):
         if isinstance(content, dict):
             if 'type' in content.keys():
                 if check_type(content, "chat_message"):
-                    message = content['message']
-                    # TODO: add message to db
-                    async_to_sync(self.channel_layer.group_send)(
-                        self.room_group_name,
-                        make_chat_message(self.username, message)
-                    )
-                    self.send_json(content=make_server_message("sent", "Test id"))
+                    if 'room' in content.keys():
+                        if Room.objects.filter(id=content['room']).count() > 0:
+                            room = Room.objects.get(id=content['room'])
+                            try:
+                                Membership.objects.get(room=room, end_user=self.user)
+                                room = content['room']
+                                message = content['message']
+                                # TODO: add message to db
+                                async_to_sync(self.channel_layer.group_send)(
+                                    room,
+                                    make_chat_message(self.username, room, message)
+                                )
+                                self.send_json(content=make_server_message("sent", "Test id"))
+                            except Membership.DoesNotExist:
+                                self.send_json(content=make_server_message("error", "You are not a member of this room."))
+                        else:
+                            self.send_json(content=make_server_message("error", "Room doesn't exist"))
+                    else:
+                        self.send_json(content=make_server_message("error", "Missing room key"))
                 else:
                     self.send_json(content=make_server_message("error", "Invalid message type"))
             else:
@@ -86,7 +117,8 @@ class ChatConsumer(JsonWebsocketConsumer):
     def chat_message(self, event):
         sender = event['sender']
         message = event['message']
-        self.send_json(content=make_chat_message(sender, message))
+        room = event['room']
+        self.send_json(content=make_chat_message(sender, room, message))
 
     def _is_authenticated(self):
         if hasattr(self.scope, 'auth_error'):
@@ -100,9 +132,10 @@ def check_type(event, t):
     return event['type'] == t
 
 
-def make_chat_message(sender, message):
+def make_chat_message(sender, room, message):
     return {
         "type": "chat_message",
+        "room": room,
         "sender": sender,
         "message": message,
     }
@@ -113,10 +146,4 @@ def make_server_message(status, text):
         "type": "server",
         "status": status,
         "text": text,
-    }
-
-
-def make_error_message(error):
-    return {
-        "error": error,
     }

@@ -3,5 +3,5 @@ from chat.consumers import ExampleConsumer, ChatConsumer
 
 websocket_urlpatterns = [
     re_path(r'ws/example/$', ExampleConsumer),
-    path('ws/chat/<uuid:room_id>/', ChatConsumer),
+    path('ws/chat/', ChatConsumer),
 ]
