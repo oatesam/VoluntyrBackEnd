@@ -26,4 +26,9 @@ class JWTAuthMiddleware:
                 return self.inner(dict(scope, auth_error="Invalid token format."))
             except InvalidToken:
                 return self.inner(dict(scope, auth_error="Invalid token."))
+        elif 10 < len(scope['path']):
+            raw_token = str(scope['path']).replace('/ws/chat/', '').replace('/', '')
+            valid_token = self.auth.get_validated_token(raw_token)
+            user_id = valid_token.get('user_id')
+            return self.inner(dict(scope, user_id=user_id))
         return self.inner(dict(scope, auth_error="Missing authorization headers."))

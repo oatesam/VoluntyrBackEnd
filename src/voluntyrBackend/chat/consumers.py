@@ -5,7 +5,7 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 
 from api.models import EndUser
-from chat.models import Room, Membership
+from chat.models import Room, Membership, Message
 
 
 class ChatConsumer(JsonWebsocketConsumer):
@@ -22,10 +22,11 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.user = EndUser.objects.get(id=self.scope['user_id'])
             self.username = self.user.email
 
-            # TODO: Mark online
+            # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
 
             self._get_rooms()
             self._connect_to_rooms()
+            # TODO: Send last 10 messages in each room
 
             self.accept()
             self.send_json(make_server_message("success", self.rooms))
@@ -77,7 +78,8 @@ class ChatConsumer(JsonWebsocketConsumer):
                                 Membership.objects.get(room=room, end_user=self.user)
                                 room = content['room']
                                 message = content['message']
-                                # TODO: add message to db
+                                # TODO: add message to db - one entry for every other member in the room
+
                                 async_to_sync(self.channel_layer.group_send)(
                                     room,
                                     make_chat_message(self.username, room, message)
@@ -118,6 +120,7 @@ def make_chat_message(sender, room, message):
     return {
         "type": "chat_message",
         "room": room,
+        "status": "",
         "sender": sender,
         "message": message,
     }
@@ -126,6 +129,8 @@ def make_chat_message(sender, room, message):
 def make_server_message(status, text):
     return {
         "type": "server",
+        "room": "",
         "status": status,
-        "text": text,
+        "sender": "",
+        "message": text,
     }
