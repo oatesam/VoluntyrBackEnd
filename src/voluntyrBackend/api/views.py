@@ -24,8 +24,6 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
 from .urlTokens.token import URLToken
 
 class AuthCheck:
-    # TODO add getVolunteerID
-    # TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
