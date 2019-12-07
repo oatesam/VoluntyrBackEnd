@@ -11,7 +11,7 @@ from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .models import Event, Organization, EndUser
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
+from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, ObtainDualAuthView, RecoverPasswordView, ResetPasswordView
 from .urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
@@ -1829,6 +1829,11 @@ class SignupLoginTest(TestCase):
         self.Test_organization_signup(organization_dict, expected=400,
                                       msg="Organization should not be able to signup without all required fields")
 
+    def test_password_recover(self):
+        email = "volunteertestemail@gmail.com"
+        url = "http://localhost:8000/api/token/recover/"
+        self.Test_password_recover(email, 200)
+
     def Test_volunteer_signup(self, email, password, expected=201, msg="Volunteer Signup Failed"):
         """
         Test volunteer signup endpoint
@@ -1946,3 +1951,20 @@ class SignupLoginTest(TestCase):
         email_response = email_view(email_request)
 
         self.assertEqual(email_response.status_code, expected, msg)
+
+    def Test_password_recover(self, email, url, expected):
+        """
+        Tests api/token/recover/
+        :param email: Email to test with
+        :param expected: Expected status code for Password Recovery Initiation
+        """
+        email_data = json.dumps({"email": email, "url": url})
+        factory = APIRequestFactory()
+        recover_view = RecoverPasswordView.as_view()
+        recover_request = factory.post(path="api/token/recover/", data=email_data, content_type="json")
+        recover_response = recover_view(recover_request)
+
+        self.assertEqual(recover_response.status_code, expected)
+
+
+

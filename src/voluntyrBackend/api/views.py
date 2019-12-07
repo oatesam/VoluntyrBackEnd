@@ -144,9 +144,9 @@ class RecoverPasswordView(generics.CreateAPIView):
         subject = "Voluntyr Password Recovery Link "
         recover_code = self._generate_recover_code(end_user.id)
         url_string = url + "/" + str(recover_code) + '/'
-        message = "Please find the recovery link below. \n\n" + \
+        message = "You recently requested to reset your password for your Voluntyr account. Please follow the recovery link below to change your password. \n\n" + \
                    "Recovery Link: \n" + url_string + \
-                   "\n" + "\n\n\n\n---------------------------------------------\n" \
+                   "\nIf you did not request a password reset, please ignore this email or reply to let us know." + "\n\n\n\n---------------------------------------------\n" \
                   + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
                    "Please contact us through our website instead, at voluntyr.com"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
@@ -170,7 +170,6 @@ class ResetPasswordView(generics.CreateAPIView):
             user_id = token.get_data()['user_id']
             end_user = EndUser.objects.get(id=user_id)
         except ObjectDoesNotExist:
-            print('user didn\'t exist, poopie', file=sys.stderr)
             return Response(data={"error": "User with this id does not exist."},
                             status=status.HTTP_400_BAD_REQUEST)
 
