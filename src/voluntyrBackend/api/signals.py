@@ -88,7 +88,7 @@ def generate_suggestion_email_message(suggesting_events, email, event_id):
                                                                         "be interested in: "
         for event in suggesting_events:
             token = _generate_invite_code(event_id=event.id)
-            message += "\n" +\
+            message += "\n\n" +\
                        str(event.title) + " at " + str(event.location) + " organized by " + str(event.organization) \
                        + ".\n"\
                        "The event starts on " + event.start_time.strftime("%m/%d/%Y %I:%M %p") + " and end on "\
