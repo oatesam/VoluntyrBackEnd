@@ -21,6 +21,7 @@ class RoomConsumer(JsonWebsocketConsumer):
             print("Room Connection Authenticate!")
             self.user = EndUser.objects.get(id=self.scope['user_id'])
             self.room_group_name = "online-group-room"
+            print("Room Group: %s" % str(self.room_group_name))
             self.username = self.user.email
 
             # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
@@ -32,9 +33,10 @@ class RoomConsumer(JsonWebsocketConsumer):
             self.accept()
 
         else:
-            print("Failed to Connect: %s" % self.scope['auth_error'])
+            print("Failed to connect")
+            print(str(self.scope))
             self.accept()
-            self.send_json(make_server_message("error", self.scope['auth_error']))
+            self.send_json(make_server_message("error", "Something is wrong"))
             self.close(code=4001)  # AuthError Code
 
     def disconnect(self, code):
@@ -116,7 +118,7 @@ class RoomConsumer(JsonWebsocketConsumer):
     def _is_authenticated(self):
         if hasattr(self.scope, 'auth_error'):
             return False
-        if not self.scope['user_id']:
+        if "user_id" not in self.scope.keys():
             return False
         return True
 
@@ -141,13 +143,10 @@ class ChatConsumer(JsonWebsocketConsumer):
             membership.online = True
             membership.save()
 
-            # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
             async_to_sync(self.channel_layer.group_add)(
                 self.room_id,
                 self.channel_name
             )
-
-            # TODO: Send last 10 messages in room
 
             self.accept()
             self.send_json(make_server_message("success", "joined room"))
@@ -155,20 +154,24 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.recent_messages()
 
         else:
-            print("Failed to Connect: %s" % self.scope['auth_error'])
+            print("Failed to Connect Chat")
+            print(str(self.scope))
             self.accept()
-            self.send_json(make_server_message("error", self.scope['auth_error']))
+            self.send_json(make_server_message("error", "Something is wrong"))
             self.close(code=4001)  # AuthError Code
 
     def disconnect(self, code):
-        async_to_sync(self.channel_layer.group_discard)(
-            self.room_id,
-            self.channel_name
-        )
+        print("Chat Discon Room: %s" % str(self.room_id))
+        if self.room_id is not None:
+            async_to_sync(self.channel_layer.group_discard)(
+                self.room_id,
+                self.channel_name
+            )
 
-        membership = Membership.objects.get(room__id=self.room_id, end_user__email=self.username)
-        membership.online = False
-        membership.save()
+        memberships = Membership.objects.filter(end_user__email=self.username)
+        for membership in memberships:
+            membership.online = False
+            membership.save()
 
         self.close()
 
@@ -257,7 +260,7 @@ class ChatConsumer(JsonWebsocketConsumer):
     def _is_authenticated(self):
         if hasattr(self.scope, 'auth_error'):
             return False
-        if not self.scope['user_id']:
+        if "user_id" not in self.scope.keys():
             return False
         return True
 
