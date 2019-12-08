@@ -20,7 +20,7 @@ from authy.api import AuthyApiClient
 from .models import Event, Organization, Volunteer, EndUser, Rating
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
     EndUserSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
-    SearchEventsSerializer, ObtainDualAuthSerializer
+    SearchEventsSerializer, ObtainDualAuthSerializer, ObtainSocialTokenPairSerializer
 from .urlTokens.token import URLToken
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
@@ -98,6 +98,42 @@ class ObtainTokenPairView(TokenObtainPairView):
     Class View for user to obtain JWT token
     """
     serializer_class = ObtainTokenPairSerializer
+
+class ObtainSocialTokenPairView(generics.CreateAPIView):
+    """
+    Class View for user to obtain JWT token
+    """
+    serializer_class = ObtainSocialTokenPairSerializer
+    
+    def create(self, req, *args, **kwargs):
+        #create volunteer if not exist
+        #pass email and GoogleID as password
+        body = json.loads(str(req.body, encoding='utf-8'))
+
+        try:
+            print('in social', file=sys.stderr)
+            end_user = EndUser.objects.get(email=body['email'])
+            if end_user.check_password(body['password']):
+                print('social passwords match', file=sys.stderr)
+                return Response(data={}, status=status.HTTP_200_OK)
+            else:
+                print('social passwords dont match', file=sys.stderr)
+                print('social password = ', body['password'], file=sys.stderr)
+                end_user.set_password(body['password'])
+                end_user.save()
+                return Response(data={}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            print('creating new account for Oauth',file=sys.stderr)
+            authy_id = "209891210"
+            print('end creation = ', body['email'], body['password'], authy_id)
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
+            print('end creation = ', body['email'], body['password'], '3000-1-1', '7654263668', end_user.id)
+            volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
+                                                     birthday='3000-1-1', phone_number='7654263668',
+                                                     end_user_id=end_user.id)
+            serializer = VolunteerSerializer(volunteer)
+            print('volunteer created = ', VolunteerSerializer(volunteer), file=sys.stderr)
+            return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ObtainDualAuthView(generics.GenericAPIView):

@@ -55,6 +55,11 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         return scope
 
 
+class ObtainSocialTokenPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for Social Token Pairs
+    """
+
 class ObtainDualAuthSerializer(TokenObtainPairSerializer):
     """
     Serializer for Dual Auth Tokens
