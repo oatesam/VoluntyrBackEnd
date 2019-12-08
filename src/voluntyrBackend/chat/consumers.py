@@ -9,6 +9,103 @@ from api.models import EndUser
 from chat.models import Room, Membership, Message, StatusMembership
 
 
+class TypingConsumer(JsonWebsocketConsumer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.room_group_name = None
+        self.room_id = None
+        self.user = None
+        self.username = None
+
+    def connect(self):
+        if self._is_authenticated():
+            print("Room Connection Authenticate!")
+            self.user = EndUser.objects.get(id=self.scope['user_id'])
+            self.room_id = self.scope['url_route']['kwargs']['room_id']
+            self.room_group_name = "typing-" + self.room_id
+            self.username = self.user.email
+
+            try:
+                Membership.objects.get(room__id=self.room_id, end_user__email=self.username)
+
+                async_to_sync(self.channel_layer.group_add)(
+                    self.room_group_name,
+                    self.channel_name
+                )
+
+                self.accept()
+                self.send_json(make_server_message("success", "joined room"))
+
+            except Membership.DoesNotExist:
+                print("Failed to Connect Typing - Not in group")
+                self.accept()
+                self.send_json(make_server_message("error", "You are not in this room"))
+                self.close(code=4001)  # AuthError Code
+
+        else:
+            print("Failed to connect")
+            print(str(self.scope))
+            self.accept()
+            self.send_json(make_server_message("error", "Something is wrong"))
+            self.close(code=4001)  # AuthError Code
+
+    def disconnect(self, code):
+        self.send_json(self.make_typing_message(self.username, "false"))
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
+        self.close()
+
+    def receive_json(self, content, **kwargs):
+        """
+        Example Message:
+            {
+                "type": "typing_message",
+                "user": ,
+                "typing": "true"
+            }
+        """
+
+        if isinstance(content, dict):
+            if 'type' in content.keys():
+                if check_type(content, "typing_message"):
+                    if 'typing' in content.keys():
+                        typing = content['typing']
+                        async_to_sync(self.channel_layer.group_send)(
+                            self.room_group_name,
+                            self.make_typing_message(self.username, typing)
+                        )
+                    else:
+                        self.send_json(content=make_server_message("error", "Missing typing key"))
+                else:
+                    self.send_json(content=make_server_message("error", "Invalid message type"))
+            else:
+                self.send_json(content=make_server_message("error", "Missing type key"))
+        else:
+            self.send_json(content=make_server_message("error", "Must send json"))
+
+    def typing_message(self, event):
+        user = event['user']
+        typing = event['typing']
+
+        self.send_json(content=self.make_typing_message(user, typing))
+
+    def make_typing_message(self, user, typing):
+        return {
+            'type': "typing_message",
+            'user': user,
+            'typing': typing
+        }
+
+    def _is_authenticated(self):
+        if hasattr(self.scope, 'auth_error'):
+            return False
+        if "user_id" not in self.scope.keys():
+            return False
+        return True
+
+
 class RoomConsumer(JsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -139,23 +236,28 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.room_id = self.scope['url_route']['kwargs']['room_id']
             self.username = self.user.email
 
-            membership = Membership.objects.get(room__id=self.room_id, end_user__email=self.username)
-            membership.online = True
-            membership.save()
+            try:
+                membership = Membership.objects.get(room__id=self.room_id, end_user__email=self.username)
+                membership.online = True
+                membership.save()
 
-            async_to_sync(self.channel_layer.group_add)(
-                self.room_id,
-                self.channel_name
-            )
+                async_to_sync(self.channel_layer.group_add)(
+                    self.room_id,
+                    self.channel_name
+                )
 
-            self.accept()
-            self.send_json(make_server_message("success", "joined room"))
+                self.accept()
+                self.send_json(make_server_message("success", "joined room"))
 
-            self.recent_messages()
+                self.recent_messages()
+            except Membership.DoesNotExist:
+                print("Failed to Connect Chat - Not in group")
+                self.accept()
+                self.send_json(make_server_message("error", "You are not in this room"))
+                self.close(code=4001)  # AuthError Code
 
         else:
             print("Failed to Connect Chat")
-            print(str(self.scope))
             self.accept()
             self.send_json(make_server_message("error", "Something is wrong"))
             self.close(code=4001)  # AuthError Code
