@@ -321,6 +321,23 @@ class ChatConsumer(JsonWebsocketConsumer):
                             self.send_json(content=make_server_message("error", "Room doesn't exist"))
                     else:
                         self.send_json(content=make_server_message("error", "Missing room key"))
+                elif check_type(content, "status_message"):
+                    if "message" in content.keys():
+                        message_id = content['id']
+                        try:
+                            message = Message.objects.get(id=message_id)
+                            status = StatusMembership.objects.get(end_user__email=self.username, message=message)
+                            status.status = StatusMembership.READ
+                            status.save(update_fields=['status'])
+
+                            async_to_sync(self.channel_layer.group_send)(
+                                self.room_id,
+                                self.make_status_message(message.id, self.room_id)
+                            )
+                        except Message.DoesNotExist:
+                            self.send_json(content=make_server_message("error", "Message does not exist"))
+                    else:
+                        self.send_json(content=make_server_message("error", "Missing message key"))
                 else:
                     self.send_json(content=make_server_message("error", "Invalid message type"))
             else:
@@ -328,12 +345,16 @@ class ChatConsumer(JsonWebsocketConsumer):
         else:
             self.send_json(content=make_server_message("error", "Must send json"))
 
+    def status_message(self, event):
+        message_id = event['id']
+        room = event['room']
+        self.send_status(message_id, room)
+
     def chat_message(self, event):
         _id = event['id']
         sender = event['sender']
         message = event['message']
         room = event['room']
-
         self.send_message(_id, sender, message, room)
 
     def recent_messages(self):
@@ -343,7 +364,8 @@ class ChatConsumer(JsonWebsocketConsumer):
 
     def set_status_for_all_members(self, message):
         message = Message.objects.get(id=message.id)
-        members = message.room.membership_set.values_list('end_user', flat=True)
+        members = Membership.objects.filter(room=message.room, attending=True).values_list('end_user', flat=True)
+        # members = message.room.membership_set.values_list('end_user', flat=True)
         for member in members:
             end_user = EndUser.objects.get(id=member)
             StatusMembership.objects.create(
@@ -352,12 +374,25 @@ class ChatConsumer(JsonWebsocketConsumer):
                 status=StatusMembership.SENT
             )
 
+    def make_status_message(self, _id, room):
+        message = Message.objects.get(id=_id)
+        return make_chat_message(int(_id), message.sender.email, room, message.message, message.get_status(), typ="status_message")
+
+    def send_status(self, _id, room):
+        self.send_json(content=self.make_status_message(_id, room))
+
     def send_message(self, _id, sender, message, room, status=StatusMembership.SENT):
         self.send_json(content=make_chat_message(_id, sender, room, message, status))
 
         sts = StatusMembership.objects.get_or_create(message_id=_id, end_user=self.user)[0]
-        sts.status = StatusMembership.DELIVERED
-        sts.save(update_fields=['status'])
+        if sts.status == StatusMembership.SENT:
+            sts.status = StatusMembership.DELIVERED
+            sts.save(update_fields=['status'])
+
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_id,
+            self.make_status_message(_id, room)
+        )
 
     def _is_authenticated(self):
         if hasattr(self.scope, 'auth_error'):
@@ -371,9 +406,9 @@ def check_type(event, t):
     return event['type'] == t
 
 
-def make_chat_message(_id, sender, room, message, status):
+def make_chat_message(_id, sender, room, message, status, typ="chat_message"):
     return {
-        "type": "chat_message",
+        "type": typ,
         "id": _id,
         "room": room,
         "status": status,
