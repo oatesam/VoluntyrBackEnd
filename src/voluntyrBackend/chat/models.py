@@ -30,6 +30,23 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     status = models.ManyToManyField('api.EndUser', through="StatusMembership")
 
+    class Meta:
+        ordering = ['timestamp']
+
+    def get_room_id(self):
+        return str(self.room.id)
+
+    def get_message_to_send(self):
+        return {"_id": str(self.id), "sender": str(self.sender.email), "message": str(self.message), "room": self.get_room_id()}
+
+    def get_status(self):
+        receipts = set(self.statusmembership_set.values_list('status', flat=True))
+        if len(receipts) == 1:
+            return str(receipts.pop())
+        if StatusMembership.SENT in receipts:
+            return StatusMembership.SENT
+        return StatusMembership.DELIVERED
+
 
 # https://docs.djangoproject.com/en/dev/topics/db/models/#extra-fields-on-many-to-many-relationships
 class StatusMembership(models.Model):

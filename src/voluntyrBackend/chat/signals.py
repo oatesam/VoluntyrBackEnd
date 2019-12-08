@@ -3,7 +3,7 @@ from django.dispatch import receiver
 
 from api.models import Event
 from api.signals import signal_volunteer_event_registration
-from chat.models import Room, Membership
+from chat.models import Room, Membership, StatusMembership
 from chat.utilities import get_room_or_error
 
 
@@ -32,3 +32,4 @@ def volunteer_event_registration_change(sender, **kwargs):
         membership = Membership.objects.get(end_user=end_user, room=room)
         membership.attending = False
         membership.save(update_fields=['attending'])
+        StatusMembership.objects.filter(end_user=end_user).delete()

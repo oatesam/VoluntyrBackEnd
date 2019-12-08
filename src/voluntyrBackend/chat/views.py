@@ -22,7 +22,7 @@ class ListRoomsAPIView(generics.ListCreateAPIView, AuthCheck):
 
     def get_queryset(self):
         end_user = EndUser.objects.get(id=AuthCheck.get_user_id(self.request))
-        return Room.objects.filter(membership__end_user=end_user)
+        return Room.objects.filter(membership__end_user=end_user, membership__attending=True)
 
     def create(self, request, *args, **kwargs):
         user1 = EndUser.objects.get(id=AuthCheck.get_user_id(request))
