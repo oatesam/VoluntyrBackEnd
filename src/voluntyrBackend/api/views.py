@@ -23,9 +23,6 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
     SearchEventsSerializer, ObtainDualAuthSerializer, ObtainSocialTokenPairSerializer
 from .urlTokens.token import URLToken
 
-authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
-
-
 class AuthCheck:
     # TODO add getVolunteerID
     # TODO add getOrganizationID
@@ -92,12 +89,50 @@ class AuthCheck:
         """
         return token.get('user_id')
 
+Authy_Keys = ['y1FMxV7LddZrh43mrf1d9HKZZWzB9QmO',
+              'ycS7GVEZpouc8vbp055UDnMM290BVh1o',
+              'LbES9hkFP9PWFmYd4ZJK497OmnLvVNuA',
+              'SI7g0Ihin4vKU0VS2CGpkSkBJUa20Xza']
+
+authy_api = AuthyApiClient(Authy_Keys[0])
 
 class ObtainTokenPairView(TokenObtainPairView):
     """
     Class View for user to obtain JWT token
     """
     serializer_class = ObtainTokenPairSerializer
+
+    def rotate_authy_keys(self):
+        global authy_api
+        key_index = Authy_Keys.index(authy_api.api_key)
+        authy_api = AuthyApiClient(Authy_Keys[key_index + 1])
+
+    def post(self, request, *args, **kwargs):
+        ret = super().post(request, *args, **kwargs)
+        if ret.status_code == 200:
+            while (True):
+                authy_id = EndUser.objects.get(email=request.data['email'])
+                authy_response = authy_api.users.request_sms(authy_id, {'force': True})
+
+                if authy_response.content['success']:
+                    ret.data['authy_sent'] = True
+                    return ret
+                elif authy_response.content['error_code'] == '60009':
+                    try:
+                        self.rotate_authy_keys()
+                    except IndexError:
+                        ret.data['authy_sent'] = False
+                        return ret
+                elif authy_response.content['error_code'] == '60003' or authy_response.content['error_code'] == '60010' or authy_response.content['error_code'] == '60026':
+                    ret.data['authy_sent'] = False
+                    return ret
+                else:
+                    print('authy_content = ', authy_response.content, file=sys.stderr)
+                    return Response(data={'error': authy_response.content}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        ret.data['authy_sent'] = False
+        return ret
+
+
 
 class ObtainSocialTokenPairView(generics.CreateAPIView):
     """
@@ -111,30 +146,21 @@ class ObtainSocialTokenPairView(generics.CreateAPIView):
         #create volunteer if not exist
         #pass email and GoogleID as password
         body = json.loads(str(req.body, encoding='utf-8'))
-        print('wtf is going on', file=sys.stderr)
         try:
-            print('in social', file=sys.stderr)
             end_user = EndUser.objects.get(email=body['email'])
             if end_user.check_password(body['password']):
-                print('social passwords match', file=sys.stderr)
                 return Response(data={}, status=status.HTTP_200_OK)
             else:
-                print('social passwords dont match', file=sys.stderr)
-                print('social password = ', body['password'], file=sys.stderr)
                 end_user.set_password(body['password'])
                 end_user.save()
                 return Response(data={}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
-            print('creating new account for Oauth',file=sys.stderr)
             authy_id = "209891210"
-            print('end creation = ', body['email'], body['password'], authy_id)
             end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
-            print('end creation = ', body['email'], body['password'], '3000-1-1', '7654263668', end_user.id)
             volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
                                                      birthday='3000-1-1', phone_number='7654263668',
                                                      end_user_id=end_user.id)
             serializer = VolunteerSerializer(volunteer)
-            print('volunteer created = ', VolunteerSerializer(volunteer), file=sys.stderr)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -142,6 +168,9 @@ class ObtainDualAuthView(generics.GenericAPIView):
     """
     Class View for user to obtain Dual Authentication Token
     """
+    authentication_classes = []
+    permission_classes = []
+
     serializer_class = ObtainDualAuthSerializer
 
     def post(self, request, *args, **kwargs):
@@ -155,9 +184,7 @@ class ObtainDualAuthView(generics.GenericAPIView):
         user_id = AuthCheck.get_user_id(self.request)
         end_user = EndUser.objects.get(id=user_id)
         authy_id = end_user.authy_id
-
         verification = authy_api.tokens.verify(authy_id, token=body['token'])
-
         if verification.ok():
             return Response(data={'verified': 'true'}, status=status.HTTP_200_OK)
         else:
@@ -191,7 +218,6 @@ class RecoverPasswordView(generics.CreateAPIView):
                   + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
                    "Please contact us through our website instead, at voluntyr.com"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
-        print(message, file=sys.stderr)
         return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
 
     def _generate_recover_code(self, user_id):

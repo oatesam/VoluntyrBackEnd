@@ -53,6 +53,7 @@ class Utilities:
                                             content_type='application/x-www-form-urlencoded')
         obtain_token_response = obtain_token_view(obtain_token_request)
         self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this volunteer.")
+        self.assertIn('authy_sent', obtain_token_response.data.keys())
 
         refresh_token = obtain_token_response.data['refresh']
         access_token = obtain_token_response.data['access']
@@ -92,6 +93,7 @@ class Utilities:
                                             content_type='application/x-www-form-urlencoded')
         obtain_token_response = obtain_token_view(obtain_token_request)
         self.assertEqual(obtain_token_response.status_code, 200, "Failed to get token pair for this organization.")
+        self.assertIn('authy_sent', obtain_token_response.data.keys())
 
         refresh_token = obtain_token_response.data['refresh']
         access_token = obtain_token_response.data['access']
