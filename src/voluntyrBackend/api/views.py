@@ -103,13 +103,15 @@ class ObtainSocialTokenPairView(generics.CreateAPIView):
     """
     Class View for user to obtain JWT token
     """
+    authentication_classes = []
+    permission_classes = []
     serializer_class = ObtainSocialTokenPairSerializer
     
     def create(self, req, *args, **kwargs):
         #create volunteer if not exist
         #pass email and GoogleID as password
         body = json.loads(str(req.body, encoding='utf-8'))
-
+        print('wtf is going on', file=sys.stderr)
         try:
             print('in social', file=sys.stderr)
             end_user = EndUser.objects.get(email=body['email'])
@@ -168,6 +170,9 @@ class RecoverPasswordView(generics.CreateAPIView):
     View to generate an recovery code for an event. GET will return a recovery code for this user and POST will email
     the provided email a link to recover
     """
+    authentication_classes = []
+    permission_classes = []
+
     def create(self, req, *args, **kwargs):
         try:
             body = json.loads(str(req.body, encoding='utf-8'))
@@ -198,6 +203,9 @@ class ResetPasswordView(generics.CreateAPIView):
     """
     An endpoint for changing password.
     """
+    authentication_classes = []
+    permission_classes = []
+
     def create(self, request, *args, **kwargs):
         try:
             body = json.loads(str(request.body, encoding='utf-8'))
