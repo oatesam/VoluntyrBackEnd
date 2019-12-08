@@ -10,25 +10,136 @@ from chat.models import Room, Membership, Message, StatusMembership
 
 
 class RoomConsumer(JsonWebsocketConsumer):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.room_group_name = None
+        self.user = None
+        self.username = None
+
+    def connect(self):
+        if self._is_authenticated():
+            print("Room Connection Authenticate!")
+            self.user = EndUser.objects.get(id=self.scope['user_id'])
+            self.room_group_name = "online-group-room"
+            self.username = self.user.email
+
+            # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
+            async_to_sync(self.channel_layer.group_add)(
+                self.room_group_name,
+                self.channel_name
+            )
+
+            self.accept()
+
+        else:
+            print("Failed to Connect: %s" % self.scope['auth_error'])
+            self.accept()
+            self.send_json(make_server_message("error", self.scope['auth_error']))
+            self.close(code=4001)  # AuthError Code
+
+    def disconnect(self, code):
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
+        self.close()
+
+    def receive_json(self, content, **kwargs):
+        """
+        Example Message:
+            {
+                "type": "online_message",
+                "room": room,
+                "user": "",
+                "status": ""
+            }
+        """
+
+        if isinstance(content, dict):
+            if 'type' in content.keys():
+                if check_type(content, "online_message"):
+                    if 'room' in content.keys():
+                        if Room.objects.filter(id=content['room']).count() > 0:
+                            room = Room.objects.get(id=content['room'])
+                            if 'status' in content.keys():
+                                try:
+                                    membership = Membership.objects.get(room=room, end_user=self.user)
+                                    status = content['status']
+                                    if status == "get":
+                                        self.send_all_members(room)
+
+                                    else:
+                                        membership.online = (status == "online")
+                                        membership.save(update_fields=["online"])
+                                        async_to_sync(self.channel_layer.group_send)(
+                                            self.room_group_name,
+                                            self.make_online_message(self.username, str(room.id), status)
+                                        )
+
+                                except Membership.DoesNotExist:
+                                    self.send_json(
+                                        content=make_server_message("error", "You are not a member of this room."))
+                            else:
+                                self.send_json(content=make_server_message("error", "Missing status key"))
+                        else:
+                            self.send_json(content=make_server_message("error", "Room doesn't exist"))
+                    else:
+                        self.send_json(content=make_server_message("error", "Missing room key"))
+                else:
+                    self.send_json(content=make_server_message("error", "Invalid message type"))
+            else:
+                self.send_json(content=make_server_message("error", "Missing type key"))
+        else:
+            self.send_json(content=make_server_message("error", "Must send json"))
+
+    def online_message(self, event):
+        user = event['user']
+        room = event['room']
+        status = event['status']
+
+        self.send_json(content=self.make_online_message(user, room, status))
+
+    def send_all_members(self, room):
+        for member in Membership.objects.filter(room=room, attending=True):
+            self.send_json(content=self.make_online_message(str(member.end_user.email), str(room.id), str(member.online)))
+
+        # TODO send back all member status for this group
+
+    def make_online_message(self, user, room, status):
+        return {
+            'type': "online_message",
+            'room': room,
+            'user': user,
+            'status': status
+        }
+
+    def _is_authenticated(self):
+        if hasattr(self.scope, 'auth_error'):
+            return False
+        if not self.scope['user_id']:
+            return False
+        return True
 
 
 class ChatConsumer(JsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.room_id = None
-        self.room_group_name = None
+        # self.room_group_name = None
         self.user = None
         self.username = None
         self.RECENT_MESSAGES = 10
-        self.rooms = []
 
     def connect(self):
         if self._is_authenticated():
-            print("Connection Authenticate!")
+            print("Chat Connection Authenticate!")
             self.user = EndUser.objects.get(id=self.scope['user_id'])
             self.room_id = self.scope['url_route']['kwargs']['room_id']
             self.username = self.user.email
+
+            membership = Membership.objects.get(room__id=self.room_id, end_user__email=self.username)
+            membership.online = True
+            membership.save()
 
             # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
             async_to_sync(self.channel_layer.group_add)(
@@ -54,26 +165,12 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.room_id,
             self.channel_name
         )
+
+        membership = Membership.objects.get(room__id=self.room_id, end_user__email=self.username)
+        membership.online = False
+        membership.save()
+
         self.close()
-
-    def _get_rooms(self):
-        rooms = Room.objects.filter(membership__end_user=self.user).values_list('id', flat=True)
-        for room in rooms:
-            self.rooms.append(str(room))
-
-    def _connect_to_rooms(self):
-        for room in self.rooms:
-            async_to_sync(self.channel_layer.group_add)(
-                room,
-                self.channel_name
-            )
-
-    def _disconnect_from_rooms(self):
-        for room in self.rooms:
-            async_to_sync(self.channel_layer.group_discard)(
-                room,
-                self.channel_name
-            )
 
     def receive_json(self, content, **kwargs):
         """
