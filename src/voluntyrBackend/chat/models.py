@@ -10,7 +10,12 @@ class Room(models.Model):
 
     def get_room_name(self):
         if self.event is None:
-            return "Private Chat Room"
+            members = Membership.objects.filter(room=self)
+            member_set = set(members.values_list('end_user__email', flat=True))
+            if len(member_set) > 1:
+                return "Private Chat Room for " + member_set.pop() + " and " + member_set.pop()
+            else:
+                return "Private Chat Room for " + member_set.pop()
         else:
             return "Event Chat Room for " + self.event.title
 
