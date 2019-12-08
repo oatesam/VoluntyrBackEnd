@@ -6,7 +6,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from .models import Event, Volunteer, Organization, EndUser
 
 
-authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
+
+
 
 class EventsSerializer(serializers.ModelSerializer):
     """
@@ -35,10 +36,6 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
 
         scope = self.get_scope(user)
         token['scope'] = scope
-
-        authy_id = end_user.authy_id
-        authy_api.users.request_sms(authy_id, {'force': True})
-
         return token
 
     def get_scope(self, user):
