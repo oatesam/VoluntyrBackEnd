@@ -32,13 +32,17 @@ class JWTAuthMiddleware:
                 return self.inner(dict(scope, auth_error="Invalid token."))
         # elif 10 < len(scope['path']):
         elif 'path' in scope.keys() and len(re.findall(self.token_pattern, str(scope['path']))) > 0:
-            print("Trying")
-            raw_token = self._extract_token(str(scope['path']))
-            print("Raw: %s" % raw_token)
-            # raw_token = str(scope['path']).replace('/ws/chat/', '').replace('/', '')
-            valid_token = self.auth.get_validated_token(raw_token)
-            user_id = valid_token.get('user_id')
-            return self.inner(dict(scope, user_id=user_id))
+            try:
+                # print("Trying")
+                raw_token = self._extract_token(str(scope['path']))
+                # print("Raw: %s" % raw_token)
+                # raw_token = str(scope['path']).replace('/ws/chat/', '').replace('/', '')
+                valid_token = self.auth.get_validated_token(raw_token)
+                user_id = valid_token.get('user_id')
+                return self.inner(dict(scope, user_id=user_id))
+            except InvalidToken:
+                print("Invalid token")
+                return self.inner(dict(scope, auth_error="Invalid token."))
         return self.inner(dict(scope, auth_error="Missing authorization headers."))
 
     def _extract_token(self, path):
