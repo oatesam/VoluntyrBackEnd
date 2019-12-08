@@ -23,13 +23,16 @@ class ChatConsumer(JsonWebsocketConsumer):
         if self._is_authenticated():
             print("Connection Authenticate!")
             self.user = EndUser.objects.get(id=self.scope['user_id'])
+            self.room_id = self.scope['url_route']['kwargs']['room_id']
             self.username = self.user.email
 
             # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
+            async_to_sync(self.channel_layer.group_add)(
+                self.room_id,
+                self.channel_name
+            )
 
-            self._get_rooms()
-            self._connect_to_rooms()
-            # TODO: Send last 10 messages in each room
+            # TODO: Send last 10 messages in room
 
             self.accept()
             self.send_json(make_server_message("success", self.rooms))
@@ -40,7 +43,10 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.close(code=4001)  # AuthError Code
 
     def disconnect(self, code):
-        self._disconnect_from_rooms()
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_id,
+            self.channel_name
+        )
         self.close()
 
     def _get_rooms(self):
