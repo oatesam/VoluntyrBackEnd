@@ -29,9 +29,24 @@ class ListRoomsAPIView(generics.ListCreateAPIView, AuthCheck):
         user2 = EndUser.objects.get(email=request.data['email'])
 
         if user1 != user2:
-            room = Room.objects.create()
-            Membership.objects.create(end_user=user1, room=room)
-            Membership.objects.create(end_user=user2, room=room)
+            exists, room = self.private_room_exists(user1, user2)
+            if not exists:
+                room = Room.objects.create()
+                Membership.objects.create(end_user=user1, room=room)
+                Membership.objects.create(end_user=user2, room=room)
             return Response(data=RoomSerializer(room).data, status=status.HTTP_201_CREATED)
         return Response(data={"Error": "You cannot create a private chat with yourself."},
                         status=status.HTTP_400_BAD_REQUEST)
+
+    def private_room_exists(self, u1, u2):
+        try:
+            rooms = Room.objects.filter(event=None)
+            for room in rooms:
+                members = Membership.objects.filter(room=room)
+                if len(members) == 2:
+                    member_set = set(members.values_list('end_user__email', flat=True))
+                    if u1.email in member_set and u2.email in member_set:
+                        return True, room
+            return False, None
+        except Room.DoesNotExist:
+            return False, None

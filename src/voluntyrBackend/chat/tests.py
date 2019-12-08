@@ -106,6 +106,10 @@ class RoomTests(TestCase, Utilities):
         user1_token = self.volunteerTokens[1]['access']
         self._test_create_private_chat_helper(user1, user2, user3, user1_token, client, path, rooms_before_new_event, 2)
 
+        room_count = Room.objects.all().count()
+        self._test_create_private_chat_helper(user1, user2, user3, user1_token, client, path, rooms_before_new_event, 2)
+        self.assertEqual(Room.objects.all().count(), room_count)
+
     def _test_create_private_chat_helper(self, user1, user2, user3, user1_token, client, path, start_room_count,
                                          room_count_diff):
         client.headers.update({'Authorization': 'Bearer ' + user1_token})
@@ -195,7 +199,12 @@ class RoomTests(TestCase, Utilities):
                 'id': str(self.room2.id)
             }
         ]
-        self.assertListEqual(content, expected)
+        self.assertEqual(len(content), len(expected))
+        for i in range(0, len(expected)):
+            a = content[i]
+            e = expected[i]
+            self.assertIn(e['name'], a['name'])
+            self.assertEqual(a['id'], e['id'])
 
     def test_volunteer_event_chat_registration(self):
         self.organization_new_event(self.organization_tokens['access'], self.event_dict)
@@ -257,7 +266,7 @@ class RoomTests(TestCase, Utilities):
 
     def _assert_private_chat_room(self, room):
         self.assertIsNone(room.event)
-        self.assertEqual(room.get_room_name(), 'Private Chat Room')
+        self.assertIn('Private Chat Room', room.get_room_name())
 
 
 class ChatTests(TestCase, tests.Utilities):
