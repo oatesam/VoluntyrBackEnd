@@ -1831,8 +1831,7 @@ class SignupLoginTest(TestCase):
 
     def test_password_recover(self):
         email = "volunteertestemail@gmail.com"
-        url = "http://localhost:8000/api/token/recover/"
-        self.Test_password_recover(email, 200)
+        self.Test_password_recover(email, 400)
 
     def Test_volunteer_signup(self, email, password, expected=201, msg="Volunteer Signup Failed"):
         """
@@ -1952,13 +1951,13 @@ class SignupLoginTest(TestCase):
 
         self.assertEqual(email_response.status_code, expected, msg)
 
-    def Test_password_recover(self, email, url, expected):
+    def Test_password_recover(self, email, expected):
         """
         Tests api/token/recover/
         :param email: Email to test with
         :param expected: Expected status code for Password Recovery Initiation
         """
-        email_data = json.dumps({"email": email, "url": url})
+        email_data = json.dumps({"email": email})
         factory = APIRequestFactory()
         recover_view = RecoverPasswordView.as_view()
         recover_request = factory.post(path="api/token/recover/", data=email_data, content_type="json")
