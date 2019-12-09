@@ -7,22 +7,10 @@ import django.dispatch
 from django.utils import timezone
 from .urlTokens.token import URLToken
 
-from .models import Event
-# create custom signal for when volunteer sign up for event
-signal_volunteer_signed_up_event = django.dispatch.Signal(providing_args=["vol_id", "event_id"])
+from api.models import Event
 
-
-@receiver(signal_volunteer_signed_up_event)
-def volunteer_signed_up_event_handler(sender, **kwargs):
-    vol_id = kwargs["vol_id"]
-    event_id = kwargs["event_id"]
-    event = Event.objects.get(id=event_id)
-    volunteer = kwargs["volunteer"]
-    suggesting_events = _make_suggest_events_list(vol_id, event_id, volunteer)
-    email = [volunteer.end_user.email]
-    subject = "Thank you for registering to volunteer with " + event.organization.name
-    message = generate_suggestion_email_message(suggesting_events, email, event_id)
-    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, email)
+# create custom signal for when volunteer changes their event registration. attending = True for registering, False for unregistering
+signal_volunteer_event_registration = django.dispatch.Signal(providing_args=["vol_id", "event_id", "volunteer", "attending"])
 
 
 @receiver(post_save, sender=Event)
@@ -38,6 +26,20 @@ def edit_handler(sender, **kwargs):
 
         emails = _make_emails(volunteer_emails, settings.DEFAULT_FROM_EMAIL, subject, message)
         send_mass_mail(emails)
+
+
+@receiver(signal_volunteer_event_registration)
+def volunteer_signed_up_event_handler(sender, **kwargs):
+    if kwargs['attending']:
+        vol_id = kwargs["vol_id"]
+        event_id = kwargs["event_id"]
+        event = Event.objects.get(id=event_id)
+        volunteer = kwargs["volunteer"]
+        suggesting_events = _make_suggest_events_list(vol_id, event_id, volunteer)
+        email = [volunteer.end_user.email]
+        subject = "Thank you for registering to volunteer with " + event.organization.name
+        message = generate_suggestion_email_message(suggesting_events, email, event_id)
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, email)
 
 
 def _get_volunteer_emails(event):

@@ -1,5 +1,4 @@
 import json
-import time
 from datetime import datetime, timedelta
 
 from authy.api import AuthyApiClient
@@ -10,9 +9,10 @@ from django.utils import timezone
 from rest_framework.test import APIRequestFactory, RequestsClient
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from .models import Event, Organization, EndUser
-from .views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView, ObtainDualAuthView, RecoverPasswordView, ResetPasswordView
-from .urlTokens.token import URLToken
+from api.models import Event, Organization, EndUser
+from api.urlTokens.token import URLToken
+from api.views import ObtainTokenPairView, VolunteerSignupAPIView, OrganizationSignupAPIView, CheckEmailAPIView
+from .views import RecoverPasswordView
 
 authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
@@ -112,7 +112,7 @@ class Utilities:
         response = client.post(path, json=event_dict)
         self.assertEqual(response.status_code, 201, "Utility: Failed to create new event.\n\n" + str(event_dict))
 
-    def volunteer_signup_for_event(self, token, event_id):
+    def volunteer_signup_for_event(self, token, event_id, unregisting=False):
         """
         Utility function for volunteers to signup for events
         :param token: Volunteer token
@@ -126,13 +126,17 @@ class Utilities:
         expected_contained_message = "Thank you for registering for "
         response = client.put(path)
         self.assertEqual(response.status_code, 202, "Utility: Failed to signup volunteer for this event")
-        self.assertEqual(pre_signup_outbox_len + 1, len(mail.outbox),
-                         "The outbox length after registering for an event was not the expected length. Diff from "
-                         "actual to expected: %d" % (
-                                 len(mail.outbox) - (pre_signup_outbox_len + 1)))
-        for email in mail.outbox:
-            self.assertIn(expected_subject, email.subject)
-            self.assertIn(expected_contained_message, email.body)
+
+        if unregisting:
+            self.assertEqual(pre_signup_outbox_len, len(mail.outbox), "An email was sent.")
+        else:
+            self.assertEqual(pre_signup_outbox_len + 1, len(mail.outbox),
+                             "The outbox length after registering for an event was not the expected length. Diff from "
+                             "actual to expected: %d" % (
+                                     len(mail.outbox) - (pre_signup_outbox_len + 1)))
+            for email in mail.outbox:
+                self.assertIn(expected_subject, email.subject)
+                self.assertIn(expected_contained_message, email.body)
 
 
 class RatingTest(TestCase, Utilities):
@@ -562,23 +566,17 @@ class InviteTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'start_time': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=1, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'start_time': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=2, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
@@ -744,23 +742,17 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'start_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=1, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=1)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'start_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=2, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now().replace(tzinfo=timezone.get_current_timezone()) + timedelta(days=2)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
@@ -857,6 +849,8 @@ class VolunteerOrganizationPageTests(TestCase, Utilities):
             e = expected[i]
             e['id'] = i + 1
             e['organization'] = 1
+            e['start_time'] = e['start_time'][:-2] + ":" + e['start_time'][-2:]
+            e['end_time'] = e['end_time'][:-2] + ":" + e['end_time'][-2:]
             self.assertDictEqual(e, a, "Event dict did not match expected")
 
 
@@ -959,23 +953,17 @@ class EventEmailTests(TestCase, Utilities):
     hour = datetime.today().time().hour
     eventDicts = [
         {
-            'start_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T'
-                          + str(hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)) + 'T'
-                        + str(hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today)) if today < 10 else str(today)),
+            'start_time': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=1, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
         },
         {
-            'start_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 1).zfill(2) + ':00:00-05:00',
-            'end_time': '2019-' + str(month) + '-' + (
-                ("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)) + 'T' + str(
-                hour + 2).zfill(2) + ':00:00-05:00',
-            'date': '2019-' + str(month) + '-' + (("0" + str(today + 1)) if today + 1 < 10 else str(today + 1)),
+            'start_time': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'end_time': (timezone.now() + timedelta(days=2, hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z"),
+            'date': (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
             'title': 'First event',
             'location': 'IU',
             'description': 'Test event'
@@ -1435,10 +1423,11 @@ class VolunteerEventSignupTest(TestCase, Utilities):
         path = "http://testserver/api/event/%d/volunteer/" % self.eventId
 
         data_response = client.put(path)
-        content = json.loads(data_response.content)
-        status = data_response.status_code
 
+        status = data_response.status_code
         self.assertEqual(status, 202, msg="Volunteer event signup failed.")
+
+        content = json.loads(data_response.content)
         self.assertDictEqual(content, {"Success": "Volunteer has signed up for event %d" % self.eventId})
         self.confirm_signup(self.eventId)
 

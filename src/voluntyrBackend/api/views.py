@@ -10,7 +10,7 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
-from .signals import signal_volunteer_signed_up_event
+from api.signals import signal_volunteer_event_registration
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
@@ -24,8 +24,6 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
 from .urlTokens.token import URLToken
 
 class AuthCheck:
-    # TODO add getVolunteerID
-    # TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
@@ -598,11 +596,13 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
             if volunteer in current_event.volunteers.all():
                 current_event.volunteers.remove(vol_id)
+                signal_volunteer_event_registration.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'],
+                                                         volunteer=volunteer, attending=False)
                 return Response(data={"Success": "Volunteer has been removed from event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
             else:
                 current_event.volunteers.add(vol_id)
-                signal_volunteer_signed_up_event.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'], volunteer=volunteer)
+                signal_volunteer_event_registration.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'], volunteer=volunteer, attending=True)
                 return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
 
@@ -651,7 +651,7 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         """
-        POST endpoint to update an existing event
+        PUT endpoint to update an existing event
         """
         if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             try:
