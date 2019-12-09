@@ -267,8 +267,3 @@ class RoomTests(TestCase, Utilities):
     def _assert_private_chat_room(self, room):
         self.assertIsNone(room.event)
         self.assertIn('Private Chat Room', room.get_room_name())
-
-
-class ChatTests(TestCase, tests.Utilities):
-    def test_message(self):
-        self.skipTest('Not Implemented.')
