@@ -121,7 +121,6 @@ class RoomConsumer(JsonWebsocketConsumer):
             print("Room Group: %s" % str(self.room_group_name))
             self.username = self.user.email
 
-            # TODO: Mark online: New Consumer? Connect each user in chat to it to get updates
             async_to_sync(self.channel_layer.group_add)(
                 self.room_group_name,
                 self.channel_name
@@ -201,8 +200,6 @@ class RoomConsumer(JsonWebsocketConsumer):
     def send_all_members(self, room):
         for member in Membership.objects.filter(room=room, attending=True):
             self.send_json(content=self.make_online_message(str(member.end_user.email), str(room.id), str(member.online)))
-
-        # TODO send back all member status for this group
 
     def make_online_message(self, user, room, status):
         return {

@@ -22,7 +22,6 @@ def volunteer_event_registration_change(sender, **kwargs):
     room = get_room_or_error(event=event)
     if kwargs['attending']:
         try:
-            # TODO; Create tests for adding, unadding, readding, volunteer to chatroom
             membership = Membership.objects.get(end_user=end_user, room=room)
             membership.attending = True
             membership.save(update_fields=['attending'])
