@@ -1,30 +1,30 @@
 import json
 import sys
 import time
+import math
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import send_mass_mail
+from django.core.mail import send_mass_mail, send_mail
 from django.db import IntegrityError
 from django.db.models import Q
+from django.http import HttpRequest
 from django.utils import timezone
+from api.signals import signal_volunteer_event_registration
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from authy.api import AuthyApiClient
 
-from .models import Event, Organization, Volunteer, EndUser
+from .models import Event, Organization, Volunteer, EndUser, Rating
 from .serializers import EventsSerializer, ObtainTokenPairSerializer, OrganizationSerializer, VolunteerSerializer, \
     EndUserSerializer, OrganizationEventSerializer, VolunteerOrganizationSerializer, \
-    SearchEventsSerializer, ObtainDualAuthSerializer
+    SearchEventsSerializer, ObtainDualAuthSerializer, ObtainSocialTokenPairSerializer
 from .urlTokens.token import URLToken
 
-authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
 class AuthCheck:
-    # TODO add getVolunteerID
-    # TODO add getOrganizationID
     @classmethod
     def get_user_id(cls, req):
         """
@@ -89,17 +89,91 @@ class AuthCheck:
         return token.get('user_id')
 
 
+Authy_Keys = [
+    '8Y5jdppZwOg3xO9rPr6St1Np02M0eHLh',
+    'k0yj1Sw9wB0h5HSBUleSGhfhlpqDtPmA',
+    'CPejbjuy05NMPg3PI7vYndqRcp6TcP29',
+    'VSgLeGWeFisRtIwsFVhMW845Rjn43tTt',
+]
+
+authy_api = AuthyApiClient(Authy_Keys[0])
+
+
 class ObtainTokenPairView(TokenObtainPairView):
     """
     Class View for user to obtain JWT token
     """
     serializer_class = ObtainTokenPairSerializer
 
+    def rotate_authy_keys(self):
+        global authy_api
+        key_index = Authy_Keys.index(authy_api.api_key)
+        authy_api = AuthyApiClient(Authy_Keys[key_index + 1])
+
+    def post(self, request, *args, **kwargs):
+        ret = super().post(request, *args, **kwargs)
+        if ret.status_code == 200:
+            while (True):
+                authy_id = EndUser.objects.get(email=request.data['email'])
+                authy_response = authy_api.users.request_sms(authy_id, {'force': True})
+
+                if authy_response.content['success']:
+                    ret.data['authy_sent'] = True
+                    return ret
+                elif authy_response.content['error_code'] == '60009':
+                    try:
+                        self.rotate_authy_keys()
+                    except IndexError:
+                        ret.data['authy_sent'] = False
+                        return ret
+                elif authy_response.content['error_code'] == '60003' or authy_response.content[
+                    'error_code'] == '60010' or authy_response.content['error_code'] == '60026':
+                    ret.data['authy_sent'] = False
+                    return ret
+                else:
+                    print('authy_content = ', authy_response.content, file=sys.stderr)
+                    return Response(data={'error': authy_response.content}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        ret.data['authy_sent'] = False
+        return ret
+
+
+class ObtainSocialTokenPairView(generics.CreateAPIView):
+    """
+    Class View for user to obtain JWT token
+    """
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = ObtainSocialTokenPairSerializer
+
+    def create(self, req, *args, **kwargs):
+        # create volunteer if not exist
+        # pass email and GoogleID as password
+        body = json.loads(str(req.body, encoding='utf-8'))
+        try:
+            end_user = EndUser.objects.get(email=body['email'])
+            if end_user.check_password(body['password']):
+                return Response(data={}, status=status.HTTP_200_OK)
+            else:
+                end_user.set_password(body['password'])
+                end_user.save()
+                return Response(data={}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            authy_id = "209891210"
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
+            volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
+                                                 birthday='3000-1-1', phone_number='7654263668',
+                                                 end_user_id=end_user.id)
+            serializer = VolunteerSerializer(volunteer)
+            return Response(data=serializer.data, status=status.HTTP_201_CREATED)
+
 
 class ObtainDualAuthView(generics.GenericAPIView):
     """
     Class View for user to obtain Dual Authentication Token
     """
+    authentication_classes = []
+    permission_classes = []
+
     serializer_class = ObtainDualAuthSerializer
 
     def post(self, request, *args, **kwargs):
@@ -113,13 +187,69 @@ class ObtainDualAuthView(generics.GenericAPIView):
         user_id = AuthCheck.get_user_id(self.request)
         end_user = EndUser.objects.get(id=user_id)
         authy_id = end_user.authy_id
-
         verification = authy_api.tokens.verify(authy_id, token=body['token'])
-
         if verification.ok():
             return Response(data={'verified': 'true'}, status=status.HTTP_200_OK)
         else:
             return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RecoverPasswordView(generics.CreateAPIView):
+    """
+    View to generate an recovery code for an event. GET will return a recovery code for this user and POST will email
+    the provided email a link to recover
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def create(self, req, *args, **kwargs):
+        try:
+            body = json.loads(str(req.body, encoding='utf-8'))
+            end_user = EndUser.objects.get(email=body['email'])
+        except ObjectDoesNotExist:
+            return Response(data={"Error": "Given user does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = body['email']
+        url = body['url']
+        subject = "Voluntyr Password Recovery Link "
+        recover_code = self._generate_recover_code(end_user.id)
+        url_string = url + "/" + str(recover_code) + '/'
+        message = "You recently requested to reset your password for your Voluntyr account. Please follow the recovery link below to change your password. \n\n" + \
+                  "Recovery Link: \n" + url_string + \
+                  "\nIf you did not request a password reset, please ignore this email or reply to let us know." + "\n\n\n\n---------------------------------------------\n" \
+                  + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
+                  "Please contact us through our website instead, at voluntyr.com"
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+        return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
+
+    def _generate_recover_code(self, user_id):
+        token = URLToken(data={"user_id": user_id})
+        return token.get_token()
+
+
+class ResetPasswordView(generics.CreateAPIView):
+    """
+    An endpoint for changing password.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def create(self, request, *args, **kwargs):
+        try:
+            body = json.loads(str(request.body, encoding='utf-8'))
+            urlToken = body['user_id']
+            token = URLToken(token=urlToken)
+            user_id = token.get_data()['user_id']
+            end_user = EndUser.objects.get(id=user_id)
+        except ObjectDoesNotExist:
+            return Response(data={"error": "User with this id does not exist."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # set_password also hashes the password that the user will get
+        end_user.set_password(body['password'])
+        end_user.save()
+        return Response(data={"Success": "Password changed."}, status=status.HTTP_200_OK)
+
 
 class OrganizationEventsAPIView(generics.ListAPIView):
     """
@@ -176,7 +306,13 @@ class VolunteerSignupAPIView(generics.CreateAPIView):
                 phone=body['phone_number'],
                 country_code=1)
 
-            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_user.id)
+            if not authy_user.ok():
+                authy_id = "209891210"
+                print(authy_user.errors())
+            else:
+                authy_id = authy_user.id
+
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
             volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
                                                  birthday=body['birthday'], phone_number=body['phone_number'],
                                                  end_user_id=end_user.id)
@@ -223,6 +359,27 @@ class VolunteerEventsAPIView(generics.ListAPIView, AuthCheck):
             return AuthCheck.unauthorized_response()
 
 
+class VolunteerUnratedEventsAPIView(generics.ListAPIView, AuthCheck):
+    """
+    Class View for past events which a volunteer has signed up for and have not been rated
+    """
+    serializer_class = SearchEventsSerializer
+
+    def get_queryset(self):
+        req = self.request
+        user_id = AuthCheck.get_user_id(req)
+        volunteer = Volunteer.objects.get(end_user_id=user_id)
+        rated_events = Rating.objects.filter(Q(volunteer=volunteer)).values('event')
+        return Event.objects.filter(Q(volunteers__id=volunteer.id) & Q(start_time__lt=timezone.now())) \
+            .exclude(id__in=rated_events)
+
+    def list(self, req, *args, **kwargs):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            return super().list(req, *args, **kwargs)
+        else:
+            return AuthCheck.unauthorized_response()
+
+
 class OrganizationSignupAPIView(generics.CreateAPIView):
     """
     Class View for new organization signups.
@@ -245,7 +402,14 @@ class OrganizationSignupAPIView(generics.CreateAPIView):
                 email=body['email'],
                 phone=body['phone_number'],
                 country_code=1)
-            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_user.id)
+
+            if not authy_user.ok():
+                authy_id = "209891210"
+                print(authy_user.errors())
+            else:
+                authy_id = authy_user.id
+
+            end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
 
             missing_keys, body = self._check_dict(body, required, end_user)
             if len(missing_keys) > 0:
@@ -327,7 +491,7 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
 
     def get_queryset(self):
         """
-        default return events that hasn't happend yet
+        default return events that hasn't happened yet
         check filter before final default return
         """
         queryset = Event.objects.all()
@@ -358,6 +522,58 @@ class SearchEventsAPIView(generics.ListAPIView, AuthCheck):
         return AuthCheck.unauthorized_response()
 
 
+class RateEventAPIView(generics.GenericAPIView, AuthCheck):
+    """
+    Class View to submit ratings for completed events.
+
+    The requesting user must be a volunteer who was signed up for the event, the rating must be between 1 and 5,
+    inclusive, the rating must be submitted after the event has ended, and a single volunteer can only rate each event
+    once. If the rating was accepted, a 200 status is returned, else a 400 status and an error message is returned.
+    """
+
+    def get_object(self):
+        return Event.objects.get(id=self.kwargs['event_id'])
+
+    def post(self, req, *args, **kwards):
+        if AuthCheck.is_authorized(req, settings.SCOPE_TYPES['Volunteer']):
+            volunteer = Volunteer.objects.get(end_user__id=self.get_user_id(req))
+            try:
+                event = self.get_object()
+            except ObjectDoesNotExist:
+                return Response(data={"Error": "Event " + str(self.kwargs['event_id']) + " does not exists."}
+                                , status=status.HTTP_400_BAD_REQUEST)
+            body = json.loads(str(req.body, encoding='utf-8'))
+            rating = int(body['rating'])
+            if volunteer in event.volunteers.all():
+                if 0 < rating < 6:
+                    if event.end_time < timezone.now():
+                        if Rating.objects.filter(volunteer=volunteer, event__id=event.id).count() == 0:
+                            organization = event.organization
+                            new_rating = ((organization.rating * organization.raters) + rating) / (
+                                    organization.raters + 1)
+                            organization.raters += 1
+                            organization.rating = round(new_rating, 2)
+                            organization.save()
+
+                            Rating.objects.create(event=event, volunteer=volunteer, rating=rating)
+                            return Response(data={"Result": "Rating accepted"}, status=status.HTTP_202_ACCEPTED)
+                        else:
+                            return Response(data={"Error": "This volunteer has already rated this event"},
+                                            status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        return Response(data={"Error": "This event has not ended yet, "
+                                                       "events can only rated after they have finished."},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response(data={"Error": "Rating must be between 1 and 5, inclusive"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(data={"Error": "Requesting volunteer not registered for this event, "
+                                               "volunteers must be signed up for an event to rate it"},
+                                status=status.HTTP_400_BAD_REQUEST)
+        return AuthCheck.unauthorized_response()
+
+
 class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
     """
     Class view for volunteers to signup for events
@@ -385,12 +601,14 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                 return Response(data={"Error": "Given event ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
             if volunteer in current_event.volunteers.all():
                 current_event.volunteers.remove(vol_id)
-                current_event.save()
+                signal_volunteer_event_registration.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'],
+                                                         volunteer=volunteer, attending=False)
                 return Response(data={"Success": "Volunteer has been removed from event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
             else:
                 current_event.volunteers.add(vol_id)
-                current_event.save()
+                signal_volunteer_event_registration.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'],
+                                                         volunteer=volunteer, attending=True)
                 return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
 
@@ -439,7 +657,7 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         """
-        POST endpoint to update an existing event
+        PUT endpoint to update an existing event
         """
         if AuthCheck.is_authorized(request, settings.SCOPE_TYPES['Organization']):
             try:
@@ -448,13 +666,24 @@ class OrganizationEventUpdateAPIView(generics.UpdateAPIView):
                 org_id = organization.id
                 body = json.loads(str(request.body, encoding='utf-8'))
                 event = Event.objects.get(id=body['id'], organization_id=org_id)
-                event.start_time = body['start_time']
-                event.end_time = body['end_time']
-                event.date = body['date']
-                event.title = body['title']
-                event.location = body['location']
-                event.description = body['description']
-                event.save()
+
+                e = OrganizationEventSerializer(instance=event).data
+                diffs = []
+                for key in body:
+                    if key in e:
+                        if body[key] != e[key]:
+                            diffs.append(key)
+                    else:
+                        diffs.append(key)
+
+                if len(diffs) > 0:
+                    event.start_time = body['start_time']
+                    event.end_time = body['end_time']
+                    event.date = body['date']
+                    event.title = body['title']
+                    event.location = body['location']
+                    event.description = body['description']
+                    event.save(update_fields=diffs)
                 return Response(status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -512,6 +741,7 @@ class InviteVolunteersAPIView(generics.GenericAPIView):
     View to generate an invite code for an event. GET will return an invite code for this event and POST will email
     the provided emails a link to signup for this event
     """
+
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 

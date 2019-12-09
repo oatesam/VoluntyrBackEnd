@@ -1,13 +1,9 @@
-from authy.api import AuthyApiClient
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenObtainSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Event, Volunteer, Organization, EndUser
+from api.models import Event, Volunteer, Organization, EndUser
 
-
-# [Done] TODO: Update frontend Event object to have an ID field as the first field.
-authy_api = AuthyApiClient(settings.ACCOUNT_SECURITY_API_KEY)
 
 class EventsSerializer(serializers.ModelSerializer):
     """
@@ -36,10 +32,6 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
 
         scope = self.get_scope(user)
         token['scope'] = scope
-
-        authy_id = end_user.authy_id
-        authy_api.users.request_sms(authy_id, {'force': True})
-
         return token
 
     def get_scope(self, user):
@@ -54,6 +46,12 @@ class ObtainTokenPairSerializer(TokenObtainPairSerializer):
         elif Organization.objects.filter(end_user=user).exists():
             scope = settings.SCOPE_TYPES['Organization']
         return scope
+
+
+class ObtainSocialTokenPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for Social Token Pairs
+    """
 
 class ObtainDualAuthSerializer(TokenObtainPairSerializer):
     """
@@ -97,7 +95,7 @@ class VolunteerSearchOrganizationHelperSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Organization
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'rating', 'raters']
 
 
 class SearchEventsSerializer(serializers.ModelSerializer):
@@ -119,7 +117,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number']
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'rating', 'raters']
 
 
 class OrganizationEventSerializer(serializers.ModelSerializer):
@@ -137,6 +135,7 @@ class VolunteerOrganizationSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Organization
-        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'end_user']
+        fields = ['name', 'street_address', 'city', 'state', 'organization_motto', 'phone_number', 'end_user',
+                  'rating', 'raters']
 
     end_user = EndUserSerializer(many=False)

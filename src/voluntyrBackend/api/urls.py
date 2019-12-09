@@ -6,7 +6,8 @@ from .views import OrganizationSignupAPIView, VolunteerSignupAPIView, \
     CheckEmailAPIView, VolunteerEventSignupAPIView, SearchEventsAPIView, OrganizationEventAPIView, \
     OrganizationEmailVolunteers, CheckSignupAPIView, EventVolunteers, EventDetailAPIView, \
     OrganizationEventUpdateAPIView, VolunteerOrganizationAPIView, VolunteerEventAPIView, InviteVolunteersAPIView, \
-    InviteAPIView, EventAPIView, ObtainDualAuthView
+    InviteAPIView, EventAPIView, ObtainDualAuthView, VolunteerUnratedEventsAPIView, RateEventAPIView, \
+    RecoverPasswordView, ResetPasswordView, ObtainSocialTokenPairView
 
 from .urlTokens.converter import TokenConverter
 
@@ -15,12 +16,16 @@ register_converter(TokenConverter, "url_token")
 urlpatterns = [
     path('token/', ObtainTokenPairView.as_view()),
     path('token/dualauth/', ObtainDualAuthView.as_view()),
+    path('token/social/', ObtainSocialTokenPairView.as_view()),
+    path('token/recover/', RecoverPasswordView.as_view()),
+    path('token/recover/reset/', ResetPasswordView.as_view()),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('signup/organization/', OrganizationSignupAPIView.as_view()),
     path('signup/volunteer/', VolunteerSignupAPIView.as_view()),
     path('signup/checkemail/', CheckEmailAPIView.as_view()),
     path('volunteer/', VolunteerAPIView.as_view()),
     path('volunteer/events/', VolunteerEventsAPIView.as_view()),
+    path('volunteer/events/unrated/', VolunteerUnratedEventsAPIView.as_view()),
     path('volunteer/event/<int:event_id>/', VolunteerEventAPIView.as_view()),
     path('organization/', OrganizationAPIView.as_view()),
     path('organization/<int:org_id>/', VolunteerOrganizationAPIView.as_view()),
@@ -30,6 +35,7 @@ urlpatterns = [
     path('event/<int:event_id>/volunteer/', VolunteerEventSignupAPIView.as_view()),
     path('event/<int:event_id>/email/', OrganizationEmailVolunteers.as_view()),
     path('event/<int:event_id>/', EventAPIView.as_view()),
+    path('event/<int:event_id>/rate/', RateEventAPIView.as_view()),
     path('event/<int:event_id>/check/', CheckSignupAPIView.as_view()),
     path('event/<int:event_id>/volunteers/', EventVolunteers.as_view()),
     path('event/<int:event_id>/invite/', InviteVolunteersAPIView.as_view()),
