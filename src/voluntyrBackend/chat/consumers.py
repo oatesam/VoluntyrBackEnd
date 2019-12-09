@@ -270,12 +270,13 @@ class ChatConsumer(JsonWebsocketConsumer):
                 self.channel_name
             )
 
+        self.close()
+
+    def close(self, code=None):
         memberships = Membership.objects.filter(end_user__email=self.username)
         for membership in memberships:
             membership.online = False
             membership.save()
-
-        self.close()
 
     def receive_json(self, content, **kwargs):
         """
@@ -330,10 +331,11 @@ class ChatConsumer(JsonWebsocketConsumer):
                             status.status = StatusMembership.READ
                             status.save(update_fields=['status'])
 
-                            async_to_sync(self.channel_layer.group_send)(
-                                self.room_id,
-                                self.make_status_message(message.id, self.room_id)
-                            )
+                            if message.sender.email != self.username:
+                                async_to_sync(self.channel_layer.group_send)(
+                                    self.room_id,
+                                    self.make_status_message(message.id, self.room_id)
+                                )
                         except Message.DoesNotExist:
                             self.send_json(content=make_server_message("error", "Message does not exist"))
                     else:
