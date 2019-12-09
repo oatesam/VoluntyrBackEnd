@@ -10,7 +10,7 @@ ALLOWED_HOSTS = [
 ]
 
 DATABASES = {
-    'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
+    'default': dj_database_url.config(conn_max_age=60, ssl_require=True)
 }
 
 FRONTEND_HOST = 'https://voluntyr.herokuapp.com'
@@ -44,11 +44,11 @@ REST_FRAMEWORK = {
 
 # TODO story-57: Add heroku redis resource
 # Deployment Docs: https://channels.readthedocs.io/en/latest/deploying.html
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             "hosts": [('127.0.0.1', 6379)],
-#         },
-#     },
-# }
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.environ.get('REDIS_URL')],
+        },
+    },
+}

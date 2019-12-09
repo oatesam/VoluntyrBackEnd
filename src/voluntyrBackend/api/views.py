@@ -23,6 +23,7 @@ from .serializers import EventsSerializer, ObtainTokenPairSerializer, Organizati
     SearchEventsSerializer, ObtainDualAuthSerializer, ObtainSocialTokenPairSerializer
 from .urlTokens.token import URLToken
 
+
 class AuthCheck:
     @classmethod
     def get_user_id(cls, req):
@@ -87,12 +88,16 @@ class AuthCheck:
         """
         return token.get('user_id')
 
-Authy_Keys = ['y1FMxV7LddZrh43mrf1d9HKZZWzB9QmO',
-              'ycS7GVEZpouc8vbp055UDnMM290BVh1o',
-              'LbES9hkFP9PWFmYd4ZJK497OmnLvVNuA',
-              'SI7g0Ihin4vKU0VS2CGpkSkBJUa20Xza']
+
+Authy_Keys = [
+    '8Y5jdppZwOg3xO9rPr6St1Np02M0eHLh',
+    'k0yj1Sw9wB0h5HSBUleSGhfhlpqDtPmA',
+    'CPejbjuy05NMPg3PI7vYndqRcp6TcP29',
+    'VSgLeGWeFisRtIwsFVhMW845Rjn43tTt',
+]
 
 authy_api = AuthyApiClient(Authy_Keys[0])
+
 
 class ObtainTokenPairView(TokenObtainPairView):
     """
@@ -121,7 +126,8 @@ class ObtainTokenPairView(TokenObtainPairView):
                     except IndexError:
                         ret.data['authy_sent'] = False
                         return ret
-                elif authy_response.content['error_code'] == '60003' or authy_response.content['error_code'] == '60010' or authy_response.content['error_code'] == '60026':
+                elif authy_response.content['error_code'] == '60003' or authy_response.content[
+                    'error_code'] == '60010' or authy_response.content['error_code'] == '60026':
                     ret.data['authy_sent'] = False
                     return ret
                 else:
@@ -131,7 +137,6 @@ class ObtainTokenPairView(TokenObtainPairView):
         return ret
 
 
-
 class ObtainSocialTokenPairView(generics.CreateAPIView):
     """
     Class View for user to obtain JWT token
@@ -139,10 +144,10 @@ class ObtainSocialTokenPairView(generics.CreateAPIView):
     authentication_classes = []
     permission_classes = []
     serializer_class = ObtainSocialTokenPairSerializer
-    
+
     def create(self, req, *args, **kwargs):
-        #create volunteer if not exist
-        #pass email and GoogleID as password
+        # create volunteer if not exist
+        # pass email and GoogleID as password
         body = json.loads(str(req.body, encoding='utf-8'))
         try:
             end_user = EndUser.objects.get(email=body['email'])
@@ -156,8 +161,8 @@ class ObtainSocialTokenPairView(generics.CreateAPIView):
             authy_id = "209891210"
             end_user = EndUser.objects.create_user(body['email'], body['password'], authy_id)
             volunteer = Volunteer.objects.create(first_name=body['first_name'], last_name=body['last_name'],
-                                                     birthday='3000-1-1', phone_number='7654263668',
-                                                     end_user_id=end_user.id)
+                                                 birthday='3000-1-1', phone_number='7654263668',
+                                                 end_user_id=end_user.id)
             serializer = VolunteerSerializer(volunteer)
             return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
@@ -189,7 +194,6 @@ class ObtainDualAuthView(generics.GenericAPIView):
             return Response(data={'verified': 'false'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class RecoverPasswordView(generics.CreateAPIView):
     """
     View to generate an recovery code for an event. GET will return a recovery code for this user and POST will email
@@ -211,10 +215,10 @@ class RecoverPasswordView(generics.CreateAPIView):
         recover_code = self._generate_recover_code(end_user.id)
         url_string = url + "/" + str(recover_code) + '/'
         message = "You recently requested to reset your password for your Voluntyr account. Please follow the recovery link below to change your password. \n\n" + \
-                   "Recovery Link: \n" + url_string + \
-                   "\nIf you did not request a password reset, please ignore this email or reply to let us know." + "\n\n\n\n---------------------------------------------\n" \
+                  "Recovery Link: \n" + url_string + \
+                  "\nIf you did not request a password reset, please ignore this email or reply to let us know." + "\n\n\n\n---------------------------------------------\n" \
                   + "Please do not respond to this message, as it cannot receive incoming mail.\n" + \
-                   "Please contact us through our website instead, at voluntyr.com"
+                  "Please contact us through our website instead, at voluntyr.com"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
         return Response(data={"Success": "Emails sent."}, status=status.HTTP_200_OK)
 
@@ -526,6 +530,7 @@ class RateEventAPIView(generics.GenericAPIView, AuthCheck):
     inclusive, the rating must be submitted after the event has ended, and a single volunteer can only rate each event
     once. If the rating was accepted, a 200 status is returned, else a 400 status and an error message is returned.
     """
+
     def get_object(self):
         return Event.objects.get(id=self.kwargs['event_id'])
 
@@ -545,7 +550,7 @@ class RateEventAPIView(generics.GenericAPIView, AuthCheck):
                         if Rating.objects.filter(volunteer=volunteer, event__id=event.id).count() == 0:
                             organization = event.organization
                             new_rating = ((organization.rating * organization.raters) + rating) / (
-                                        organization.raters + 1)
+                                    organization.raters + 1)
                             organization.raters += 1
                             organization.rating = round(new_rating, 2)
                             organization.save()
@@ -602,7 +607,8 @@ class VolunteerEventSignupAPIView(generics.GenericAPIView, AuthCheck):
                                 status=status.HTTP_202_ACCEPTED)
             else:
                 current_event.volunteers.add(vol_id)
-                signal_volunteer_event_registration.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'], volunteer=volunteer, attending=True)
+                signal_volunteer_event_registration.send(Volunteer, vol_id=vol_id, event_id=self.kwargs['event_id'],
+                                                         volunteer=volunteer, attending=True)
                 return Response(data={"Success": "Volunteer has signed up for event %s" % self.kwargs['event_id']},
                                 status=status.HTTP_202_ACCEPTED)
 
