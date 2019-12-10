@@ -89,12 +89,7 @@ class AuthCheck:
         return token.get('user_id')
 
 
-Authy_Keys = [
-    '8Y5jdppZwOg3xO9rPr6St1Np02M0eHLh',
-    'k0yj1Sw9wB0h5HSBUleSGhfhlpqDtPmA',
-    'CPejbjuy05NMPg3PI7vYndqRcp6TcP29',
-    'VSgLeGWeFisRtIwsFVhMW845Rjn43tTt',
-]
+Authy_Keys = ['eWlRNXFou4LJ09B3VbMli0hUzObF0pLA']
 
 authy_api = AuthyApiClient(Authy_Keys[0])
 
@@ -114,7 +109,7 @@ class ObtainTokenPairView(TokenObtainPairView):
         ret = super().post(request, *args, **kwargs)
         if ret.status_code == 200:
             while (True):
-                authy_id = EndUser.objects.get(email=request.data['email'])
+                authy_id = EndUser.objects.get(email=request.data['email']).authy_id
                 authy_response = authy_api.users.request_sms(authy_id, {'force': True})
 
                 if authy_response.content['success']:
@@ -125,10 +120,12 @@ class ObtainTokenPairView(TokenObtainPairView):
                         self.rotate_authy_keys()
                     except IndexError:
                         ret.data['authy_sent'] = False
+                        ret.data['authy-error'] = authy_response.content
                         return ret
                 elif authy_response.content['error_code'] == '60003' or authy_response.content[
                     'error_code'] == '60010' or authy_response.content['error_code'] == '60026':
                     ret.data['authy_sent'] = False
+                    ret.data['authy-error'] = authy_response.content
                     return ret
                 else:
                     print('authy_content = ', authy_response.content, file=sys.stderr)
