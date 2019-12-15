@@ -128,8 +128,11 @@ class ObtainTokenPairView(TokenObtainPairView):
                     ret.data['authy-error'] = authy_response.content
                     return ret
                 else:
-                    print('authy_content = ', authy_response.content, file=sys.stderr)
-                    return Response(data={'error': authy_response.content}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                    ret.data['authy_sent'] = False
+                    ret.data['authy-error'] = authy_response.content
+                    return ret
+                    # print('authy_content = ', authy_response.content, file=sys.stderr)
+                    # return Response(data={'error': authy_response.content}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         ret.data['authy_sent'] = False
         return ret
 
